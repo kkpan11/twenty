@@ -1,7 +1,8 @@
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { ObjectFilterDropdownScope } from '@/object-record/object-filter-dropdown/scopes/ObjectFilterDropdownScope';
 import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
 
+import { ObjectFilterDropdownComponentInstanceContext } from '@/object-record/object-filter-dropdown/states/contexts/ObjectFilterDropdownComponentInstanceContext';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { availableFilterDefinitionsComponentState } from '@/views/states/availableFilterDefinitionsComponentState';
 import { MultipleFiltersDropdownButton } from './MultipleFiltersDropdownButton';
 import { SingleEntityObjectFilterDropdownButton } from './SingleEntityObjectFilterDropdownButton';
 
@@ -14,9 +15,11 @@ export const ObjectFilterDropdownButton = ({
   filterDropdownId,
   hotkeyScope,
 }: ObjectFilterDropdownButtonProps) => {
-  const { availableFilterDefinitions } = useFilterDropdown({
-    filterDropdownId: filterDropdownId,
-  });
+  const availableFilterDefinitions = useRecoilComponentValueV2(
+    availableFilterDefinitionsComponentState,
+    filterDropdownId,
+  );
+
   const hasOnlyOneEntityFilter =
     availableFilterDefinitions.length === 1 &&
     availableFilterDefinitions[0].type === 'RELATION';
@@ -26,12 +29,14 @@ export const ObjectFilterDropdownButton = ({
   }
 
   return (
-    <ObjectFilterDropdownScope filterScopeId={filterDropdownId}>
+    <ObjectFilterDropdownComponentInstanceContext.Provider
+      value={{ instanceId: filterDropdownId }}
+    >
       {hasOnlyOneEntityFilter ? (
         <SingleEntityObjectFilterDropdownButton hotkeyScope={hotkeyScope} />
       ) : (
         <MultipleFiltersDropdownButton hotkeyScope={hotkeyScope} />
       )}
-    </ObjectFilterDropdownScope>
+    </ObjectFilterDropdownComponentInstanceContext.Provider>
   );
 };

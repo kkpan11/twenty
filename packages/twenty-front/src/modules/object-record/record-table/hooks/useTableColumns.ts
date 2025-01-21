@@ -1,11 +1,13 @@
 import { useCallback } from 'react';
-import { useRecoilValue } from 'recoil';
 
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
 import { useRecordTable } from '@/object-record/record-table/hooks/useRecordTable';
 import { useMoveViewColumns } from '@/views/hooks/useMoveViewColumns';
 
+import { availableTableColumnsComponentState } from '@/object-record/record-table/states/availableTableColumnsComponentState';
+import { visibleTableColumnsComponentSelector } from '@/object-record/record-table/states/selectors/visibleTableColumnsComponentSelector';
+import { tableColumnsComponentState } from '@/object-record/record-table/states/tableColumnsComponentState';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
 import { ColumnDefinition } from '../types/ColumnDefinition';
 
 type useRecordTableProps = {
@@ -17,16 +19,19 @@ export const useTableColumns = (props?: useRecordTableProps) => {
     recordTableId: props?.recordTableId,
   });
 
-  const {
-    getAvailableTableColumnsState,
-    getTableColumnsState,
-    getVisibleTableColumnsSelector,
-  } = useRecordTableStates(props?.recordTableId);
+  const availableTableColumns = useRecoilComponentValueV2(
+    availableTableColumnsComponentState,
+    props?.recordTableId,
+  );
 
-  const availableTableColumns = useRecoilValue(getAvailableTableColumnsState());
-
-  const tableColumns = useRecoilValue(getTableColumnsState());
-  const visibleTableColumns = useRecoilValue(getVisibleTableColumnsSelector());
+  const tableColumns = useRecoilComponentValueV2(
+    tableColumnsComponentState,
+    props?.recordTableId,
+  );
+  const visibleTableColumns = useRecoilComponentValueV2(
+    visibleTableColumnsComponentSelector,
+    props?.recordTableId,
+  );
 
   const { handleColumnMove } = useMoveViewColumns();
 
@@ -43,26 +48,33 @@ export const useTableColumns = (props?: useRecordTableProps) => {
     async (
       viewField: Omit<ColumnDefinition<FieldMetadata>, 'size' | 'position'>,
     ) => {
-      const isNewColumn = !tableColumns.some(
-        (tableColumns) =>
-          tableColumns.fieldMetadataId === viewField.fieldMetadataId,
+      const shouldShowColumn = !visibleTableColumns.some(
+        (visibleColumn) =>
+          visibleColumn.fieldMetadataId === viewField.fieldMetadataId,
       );
 
-      if (isNewColumn) {
+      const tableColumnPositions = [...tableColumns]
+        .sort((a, b) => b.position - a.position)
+        .map((column) => column.position);
+
+      const lastPosition = tableColumnPositions[0] ?? 0;
+
+      if (shouldShowColumn) {
         const newColumn = availableTableColumns.find(
           (availableTableColumn) =>
             availableTableColumn.fieldMetadataId === viewField.fieldMetadataId,
         );
+
         if (!newColumn) return;
 
         const nextColumns = [
           ...tableColumns,
-          { ...newColumn, isVisible: true },
+          { ...newColumn, isVisible: true, position: lastPosition + 1 },
         ];
 
         await handleColumnsChange(nextColumns);
       } else {
-        const nextColumns = tableColumns.map((previousColumn) =>
+        const nextColumns = visibleTableColumns.map((previousColumn) =>
           previousColumn.fieldMetadataId === viewField.fieldMetadataId
             ? { ...previousColumn, isVisible: !viewField.isVisible }
             : previousColumn,
@@ -71,7 +83,12 @@ export const useTableColumns = (props?: useRecordTableProps) => {
         await handleColumnsChange(nextColumns);
       }
     },
-    [tableColumns, availableTableColumns, handleColumnsChange],
+    [
+      tableColumns,
+      availableTableColumns,
+      handleColumnsChange,
+      visibleTableColumns,
+    ],
   );
 
   const handleMoveTableColumn = useCallback(

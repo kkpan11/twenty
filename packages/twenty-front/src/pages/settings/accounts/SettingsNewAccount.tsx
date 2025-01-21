@@ -1,19 +1,26 @@
 import { SettingsNewAccountSection } from '@/settings/accounts/components/SettingsNewAccountSection';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings } from '@/ui/display/icon';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsNewAccount = () => {
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+    <SubMenuTopBarContainer
+      title="New Account"
+      links={[
+        {
+          children: 'User',
+          href: getSettingsPath(SettingsPath.ProfilePage),
+        },
+        {
+          children: 'Accounts',
+          href: getSettingsPath(SettingsPath.Accounts),
+        },
+        { children: `New` },
+      ]}
+    >
       <SettingsPageContainer>
-        <Breadcrumb
-          links={[
-            { children: 'Accounts', href: '/settings/accounts' },
-            { children: `New` },
-          ]}
-        />
         <SettingsNewAccountSection />
       </SettingsPageContainer>
     </SubMenuTopBarContainer>

@@ -1,9 +1,8 @@
-import { Inject } from '@nestjs/common';
-
 import { Command, CommandRunner } from 'nest-commander';
 
-import { MessageQueue } from 'src/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/integrations/message-queue/services/message-queue.service';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 import { cleanInactiveWorkspaceCronPattern } from 'src/engine/workspace-manager/workspace-cleaner/crons/clean-inactive-workspace.cron.pattern';
 import { CleanInactiveWorkspaceJob } from 'src/engine/workspace-manager/workspace-cleaner/crons/clean-inactive-workspace.job';
 
@@ -13,7 +12,7 @@ import { CleanInactiveWorkspaceJob } from 'src/engine/workspace-manager/workspac
 })
 export class StartCleanInactiveWorkspacesCronCommand extends CommandRunner {
   constructor(
-    @Inject(MessageQueue.cronQueue)
+    @InjectMessageQueue(MessageQueue.cronQueue)
     private readonly messageQueueService: MessageQueueService,
   ) {
     super();
@@ -23,8 +22,7 @@ export class StartCleanInactiveWorkspacesCronCommand extends CommandRunner {
     await this.messageQueueService.addCron<undefined>(
       CleanInactiveWorkspaceJob.name,
       undefined,
-      cleanInactiveWorkspaceCronPattern,
-      { retryLimit: 3 },
+      { retryLimit: 3, repeat: { pattern: cleanInactiveWorkspaceCronPattern } },
     );
   }
 }

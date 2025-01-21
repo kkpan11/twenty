@@ -1,23 +1,21 @@
-import { isNonEmptyString } from '@sniptt/guards';
-
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { FieldMetadataType } from '~/generated/graphql';
-import { capitalize } from '~/utils/string/capitalize';
+import {
+  FieldMetadataType,
+  RelationDefinitionType,
+} from '~/generated-metadata/graphql';
 
 export const generateEmptyFieldValue = (
-  fieldMetadataItem: FieldMetadataItem,
+  fieldMetadataItem: Pick<FieldMetadataItem, 'type' | 'relationDefinition'>,
 ) => {
   switch (fieldMetadataItem.type) {
-    case FieldMetadataType.Email:
-    case FieldMetadataType.Phone:
     case FieldMetadataType.Text: {
       return '';
     }
-    case FieldMetadataType.Link: {
-      return {
-        label: '',
-        url: '',
-      };
+    case FieldMetadataType.Emails: {
+      return { primaryEmail: '', additionalEmails: null };
+    }
+    case FieldMetadataType.Links: {
+      return { primaryLinkUrl: '', primaryLinkLabel: '', secondaryLinks: [] };
     }
     case FieldMetadataType.FullName: {
       return {
@@ -25,7 +23,22 @@ export const generateEmptyFieldValue = (
         lastName: '',
       };
     }
+    case FieldMetadataType.Address: {
+      return {
+        addressStreet1: '',
+        addressStreet2: '',
+        addressCity: '',
+        addressState: '',
+        addressCountry: '',
+        addressPostcode: '',
+        addressLat: null,
+        addressLng: null,
+      };
+    }
     case FieldMetadataType.DateTime: {
+      return null;
+    }
+    case FieldMetadataType.Date: {
       return null;
     }
     case FieldMetadataType.Number:
@@ -41,23 +54,14 @@ export const generateEmptyFieldValue = (
       return true;
     }
     case FieldMetadataType.Relation: {
-      // TODO: refactor with relationDefiniton once the PR is merged : https://github.com/twentyhq/twenty/pull/4378
-      // so we can directly check the relation type from this field point of view.
       if (
-        !isNonEmptyString(
-          fieldMetadataItem.fromRelationMetadata?.toObjectMetadata
-            ?.nameSingular,
-        )
+        fieldMetadataItem.relationDefinition?.direction ===
+        RelationDefinitionType.ManyToOne
       ) {
         return null;
       }
 
-      return {
-        __typename: `${capitalize(
-          fieldMetadataItem.fromRelationMetadata.toObjectMetadata.nameSingular,
-        )}Connection`,
-        edges: [],
-      };
+      return [];
     }
     case FieldMetadataType.Currency: {
       return {
@@ -69,7 +73,31 @@ export const generateEmptyFieldValue = (
       return null;
     }
     case FieldMetadataType.MultiSelect: {
-      throw new Error('Not implemented yet');
+      return null;
+    }
+    case FieldMetadataType.Array: {
+      return null;
+    }
+    case FieldMetadataType.RawJson: {
+      return null;
+    }
+    case FieldMetadataType.RichText: {
+      return null;
+    }
+    case FieldMetadataType.Actor: {
+      return {
+        source: 'MANUAL',
+        workspaceMemberId: null,
+        name: '',
+      };
+    }
+    case FieldMetadataType.Phones: {
+      return {
+        primaryPhoneNumber: '',
+        primaryPhoneCountryCode: '',
+        primaryPhoneCallingCode: '',
+        additionalPhones: null,
+      };
     }
     default: {
       throw new Error('Unhandled FieldMetadataType');

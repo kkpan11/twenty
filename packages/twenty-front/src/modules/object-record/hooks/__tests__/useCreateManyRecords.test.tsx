@@ -1,8 +1,5 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
 import { mocked } from '@storybook/test';
 import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
 import { v4 } from 'uuid';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
@@ -12,10 +9,18 @@ import {
   variables,
 } from '@/object-record/hooks/__mocks__/useCreateManyRecords';
 import { useCreateManyRecords } from '@/object-record/hooks/useCreateManyRecords';
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 
 jest.mock('uuid', () => ({
   v4: jest.fn(),
 }));
+
+jest.mock('@/object-record/hooks/useRefetchAggregateQueries');
+const mockRefetchAggregateQueries = jest.fn();
+(useRefetchAggregateQueries as jest.Mock).mockReturnValue({
+  refetchAggregateQueries: mockRefetchAggregateQueries,
+});
 
 mocked(v4)
   .mockReturnValueOnce(variables.data[0].id)
@@ -37,15 +42,14 @@ const mocks = [
   },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
-);
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useCreateManyRecords', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   it('works as expected', async () => {
     const { result } = renderHook(
       () =>
@@ -63,5 +67,6 @@ describe('useCreateManyRecords', () => {
     });
 
     expect(mocks[0].result).toHaveBeenCalled();
+    expect(mockRefetchAggregateQueries).toHaveBeenCalledTimes(1);
   });
 });

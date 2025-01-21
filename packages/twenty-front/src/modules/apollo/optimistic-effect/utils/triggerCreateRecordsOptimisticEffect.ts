@@ -1,12 +1,18 @@
 import { ApolloCache, StoreObject } from '@apollo/client';
 import { isNonEmptyString } from '@sniptt/guards';
 
-import { isCachedObjectRecordConnection } from '@/apollo/optimistic-effect/utils/isCachedObjectRecordConnection';
 import { triggerUpdateRelationsOptimisticEffect } from '@/apollo/optimistic-effect/utils/triggerUpdateRelationsOptimisticEffect';
-import { CachedObjectRecord } from '@/apollo/types/CachedObjectRecord';
-import { CachedObjectRecordEdge } from '@/apollo/types/CachedObjectRecordEdge';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+import { RecordGqlRefEdge } from '@/object-record/cache/types/RecordGqlRefEdge';
 import { getEdgeTypename } from '@/object-record/cache/utils/getEdgeTypename';
+import { isObjectRecordConnectionWithRefs } from '@/object-record/cache/utils/isObjectRecordConnectionWithRefs';
+import { RecordGqlNode } from '@/object-record/graphql/types/RecordGqlNode';
+import { isRecordMatchingFilter } from '@/object-record/record-filter/utils/isRecordMatchingFilter';
+
+import { CachedObjectRecordQueryVariables } from '@/apollo/types/CachedObjectRecordQueryVariables';
+import { encodeCursor } from '@/apollo/utils/encodeCursor';
+import { isDefined } from '~/utils/isDefined';
+import { parseApolloStoreFieldName } from '~/utils/parseApolloStoreFieldName';
 
 /*
   TODO: for now new records are added to all cached record lists, no matter what the variables (filters, orderBy, etc.) are.
@@ -18,16 +24,14 @@ export const triggerCreateRecordsOptimisticEffect = ({
   objectMetadataItem,
   recordsToCreate,
   objectMetadataItems,
+  shouldMatchRootQueryFilter,
 }: {
   cache: ApolloCache<unknown>;
   objectMetadataItem: ObjectMetadataItem;
-  recordsToCreate: CachedObjectRecord[];
+  recordsToCreate: RecordGqlNode[];
   objectMetadataItems: ObjectMetadataItem[];
+  shouldMatchRootQueryFilter?: boolean;
 }) => {
-  const objectEdgeTypeName = getEdgeTypename({
-    objectNameSingular: objectMetadataItem.nameSingular,
-  });
-
   recordsToCreate.forEach((record) =>
     triggerUpdateRelationsOptimisticEffect({
       cache,
@@ -42,14 +46,9 @@ export const triggerCreateRecordsOptimisticEffect = ({
     fields: {
       [objectMetadataItem.namePlural]: (
         rootQueryCachedResponse,
-        {
-          DELETE: _DELETE,
-          readField,
-          storeFieldName: _storeFieldName,
-          toReference,
-        },
+        { DELETE: _DELETE, readField, storeFieldName, toReference },
       ) => {
-        const shouldSkip = !isCachedObjectRecordConnection(
+        const shouldSkip = !isObjectRecordConnectionWithRefs(
           objectMetadataItem.nameSingular,
           rootQueryCachedResponse,
         );
@@ -58,26 +57,59 @@ export const triggerCreateRecordsOptimisticEffect = ({
           return rootQueryCachedResponse;
         }
 
+        const { fieldVariables: rootQueryVariables } =
+          parseApolloStoreFieldName<CachedObjectRecordQueryVariables>(
+            storeFieldName,
+          );
+
+        const rootQueryFilter = rootQueryVariables?.filter;
+
         const rootQueryCachedObjectRecordConnection = rootQueryCachedResponse;
 
-        const rootQueryCachedRecordEdges = readField<CachedObjectRecordEdge[]>(
+        const rootQueryCachedRecordEdges = readField<RecordGqlRefEdge[]>(
           'edges',
           rootQueryCachedObjectRecordConnection,
         );
 
-        const rootQueryCachedRecordTotalCount =
-          readField<number>(
-            'totalCount',
-            rootQueryCachedObjectRecordConnection,
-          ) || 0;
+        const rootQueryCachedRecordTotalCount = readField<number | undefined>(
+          'totalCount',
+          rootQueryCachedObjectRecordConnection,
+        );
+
+        const rootQueryCachedPageInfo = readField<{
+          startCursor?: string;
+          endCursor?: string;
+          hasNextPage?: boolean;
+          hasPreviousPage?: boolean;
+        }>('pageInfo', rootQueryCachedObjectRecordConnection);
 
         const nextRootQueryCachedRecordEdges = rootQueryCachedRecordEdges
           ? [...rootQueryCachedRecordEdges]
           : [];
 
+        const nextQueryCachedPageInfo = isDefined(rootQueryCachedPageInfo)
+          ? { ...rootQueryCachedPageInfo }
+          : {};
+
         const hasAddedRecords = recordsToCreate
           .map((recordToCreate) => {
             if (isNonEmptyString(recordToCreate.id)) {
+              if (
+                isDefined(rootQueryFilter) &&
+                shouldMatchRootQueryFilter === true
+              ) {
+                const recordToCreateMatchesThisRootQueryFilter =
+                  isRecordMatchingFilter({
+                    record: recordToCreate,
+                    filter: rootQueryFilter,
+                    objectMetadataItem,
+                  });
+
+                if (!recordToCreateMatchesThisRootQueryFilter) {
+                  return false;
+                }
+              }
+
               const recordToCreateReference = toReference(recordToCreate);
 
               if (!recordToCreateReference) {
@@ -96,11 +128,55 @@ export const triggerCreateRecordsOptimisticEffect = ({
               );
 
               if (recordToCreateReference && !recordAlreadyInCache) {
-                nextRootQueryCachedRecordEdges.unshift({
-                  __typename: objectEdgeTypeName,
+                const cursor = encodeCursor(recordToCreate);
+
+                const edge = {
+                  __typename: getEdgeTypename(objectMetadataItem.nameSingular),
                   node: recordToCreateReference,
-                  cursor: '',
-                });
+                  cursor,
+                };
+
+                if (
+                  !isDefined(recordToCreate.position) ||
+                  recordToCreate.position === 'first'
+                ) {
+                  nextRootQueryCachedRecordEdges.unshift(edge);
+                  nextQueryCachedPageInfo.startCursor = cursor;
+                } else if (recordToCreate.position === 'last') {
+                  nextRootQueryCachedRecordEdges.push(edge);
+                  nextQueryCachedPageInfo.endCursor = cursor;
+                } else if (typeof recordToCreate.position === 'number') {
+                  let index = Math.round(
+                    nextRootQueryCachedRecordEdges.length *
+                      recordToCreate.position,
+                  );
+
+                  if (recordToCreate.position < 0) {
+                    index = Math.max(
+                      0,
+                      nextRootQueryCachedRecordEdges.length +
+                        Math.round(recordToCreate.position),
+                    );
+                  } else if (recordToCreate.position > 1) {
+                    index = nextRootQueryCachedRecordEdges.length;
+                  }
+
+                  index = Math.max(
+                    0,
+                    Math.min(index, nextRootQueryCachedRecordEdges.length),
+                  );
+
+                  nextRootQueryCachedRecordEdges.splice(index, 0, edge);
+
+                  if (index === 0) {
+                    nextQueryCachedPageInfo.startCursor = cursor;
+                  } else if (
+                    index ===
+                    nextRootQueryCachedRecordEdges.length - 1
+                  ) {
+                    nextQueryCachedPageInfo.endCursor = cursor;
+                  }
+                }
 
                 return true;
               }
@@ -117,7 +193,10 @@ export const triggerCreateRecordsOptimisticEffect = ({
         return {
           ...rootQueryCachedObjectRecordConnection,
           edges: nextRootQueryCachedRecordEdges,
-          totalCount: rootQueryCachedRecordTotalCount + 1,
+          totalCount: isDefined(rootQueryCachedRecordTotalCount)
+            ? rootQueryCachedRecordTotalCount + 1
+            : undefined,
+          pageInfo: nextQueryCachedPageInfo,
         };
       },
     },

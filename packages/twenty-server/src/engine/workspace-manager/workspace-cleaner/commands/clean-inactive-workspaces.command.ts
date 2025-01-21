@@ -1,9 +1,8 @@
-import { Inject } from '@nestjs/common';
-
 import { Command, CommandRunner, Option } from 'nest-commander';
 
-import { MessageQueue } from 'src/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/integrations/message-queue/services/message-queue.service';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 import { CleanInactiveWorkspaceJob } from 'src/engine/workspace-manager/workspace-cleaner/crons/clean-inactive-workspace.job';
 
 export type CleanInactiveWorkspacesCommandOptions = {
@@ -16,7 +15,7 @@ export type CleanInactiveWorkspacesCommandOptions = {
 })
 export class CleanInactiveWorkspacesCommand extends CommandRunner {
   constructor(
-    @Inject(MessageQueue.taskAssignedQueue)
+    @InjectMessageQueue(MessageQueue.cronQueue)
     private readonly messageQueueService: MessageQueueService,
   ) {
     super();

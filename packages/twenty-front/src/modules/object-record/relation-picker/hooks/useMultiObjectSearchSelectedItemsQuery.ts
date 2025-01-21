@@ -1,19 +1,18 @@
-import { useQuery } from '@apollo/client';
-import { gql } from '@apollo/client';
+import { gql, useQuery } from '@apollo/client';
 import { isNonEmptyArray } from '@sniptt/guards';
 import { useRecoilValue } from 'recoil';
 
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { useGenerateFindManyRecordsForMultipleMetadataItemsQuery } from '@/object-record/hooks/useGenerateFindManyRecordsForMultipleMetadataItemsQuery';
+import { useGenerateCombinedFindManyRecordsQuery } from '@/object-record/multiple-objects/hooks/useGenerateCombinedFindManyRecordsQuery';
 import { useLimitPerMetadataItem } from '@/object-record/relation-picker/hooks/useLimitPerMetadataItem';
 import {
   MultiObjectRecordQueryResult,
   useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray,
 } from '@/object-record/relation-picker/hooks/useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray';
-import { SelectedObjectRecordId } from '@/object-record/relation-picker/hooks/useMultiObjectSearch';
 import { useOrderByFieldPerMetadataItem } from '@/object-record/relation-picker/hooks/useOrderByFieldPerMetadataItem';
+import { SelectedObjectRecordId } from '@/object-record/types/SelectedObjectRecordId';
+import { capitalize } from 'twenty-shared';
 import { isDefined } from '~/utils/isDefined';
-import { capitalize } from '~/utils/string/capitalize';
 
 export const EMPTY_QUERY = gql`
   query Empty {
@@ -26,7 +25,7 @@ export const useMultiObjectSearchSelectedItemsQuery = ({
 }: {
   selectedObjectRecordIds: SelectedObjectRecordId[];
 }) => {
-  const objectMetadataItems = useRecoilValue(objectMetadataItemsState());
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
 
   const objectMetadataItemsUsedInSelectedIdsQuery = objectMetadataItems.filter(
     ({ nameSingular }) => {
@@ -68,8 +67,13 @@ export const useMultiObjectSearchSelectedItemsQuery = ({
   });
 
   const multiSelectQueryForSelectedIds =
-    useGenerateFindManyRecordsForMultipleMetadataItemsQuery({
-      objectMetadataItems: objectMetadataItemsUsedInSelectedIdsQuery,
+    useGenerateCombinedFindManyRecordsQuery({
+      operationSignatures: objectMetadataItemsUsedInSelectedIdsQuery.map(
+        (objectMetadataItem) => ({
+          objectNameSingular: objectMetadataItem.nameSingular,
+          variables: {},
+        }),
+      ),
     });
 
   const {

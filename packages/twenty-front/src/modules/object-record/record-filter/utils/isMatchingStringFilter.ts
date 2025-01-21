@@ -1,4 +1,5 @@
-import { StringFilter } from '@/object-record/record-filter/types/ObjectRecordQueryFilter';
+import { StringFilter } from '@/object-record/graphql/types/RecordGqlOperationFilter';
+import escapeRegExp from 'lodash.escaperegexp';
 
 export const isMatchingStringFilter = ({
   stringFilter,
@@ -15,13 +16,15 @@ export const isMatchingStringFilter = ({
       return value !== stringFilter.neq;
     }
     case stringFilter.like !== undefined: {
-      const regexPattern = stringFilter.like.replace(/%/g, '.*');
+      const escapedPattern = escapeRegExp(stringFilter.like);
+      const regexPattern = escapedPattern.replace(/%/g, '.*');
       const regexCaseSensitive = new RegExp(`^${regexPattern}$`);
 
       return regexCaseSensitive.test(value);
     }
     case stringFilter.ilike !== undefined: {
-      const regexPattern = stringFilter.ilike.replace(/%/g, '.*');
+      const escapedPattern = escapeRegExp(stringFilter.ilike);
+      const regexPattern = escapedPattern.replace(/%/g, '.*');
       const regexCaseInsensitive = new RegExp(`^${regexPattern}$`, 'i');
 
       return regexCaseInsensitive.test(value);
@@ -47,18 +50,6 @@ export const isMatchingStringFilter = ({
       const regexCaseInsensitive = new RegExp(regexPattern, 'i');
 
       return regexCaseInsensitive.test(value);
-    }
-    case stringFilter.gt !== undefined: {
-      return value > stringFilter.gt;
-    }
-    case stringFilter.gte !== undefined: {
-      return value >= stringFilter.gte;
-    }
-    case stringFilter.lt !== undefined: {
-      return value < stringFilter.lt;
-    }
-    case stringFilter.lte !== undefined: {
-      return value <= stringFilter.lte;
     }
     case stringFilter.startsWith !== undefined: {
       return value.startsWith(stringFilter.startsWith);

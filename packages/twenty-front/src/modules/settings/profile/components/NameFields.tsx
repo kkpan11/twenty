@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
-import debounce from 'lodash.debounce';
 import { useRecoilState, useRecoilValue } from 'recoil';
+import { useDebouncedCallback } from 'use-debounce';
 
 import { currentUserState } from '@/auth/states/currentUserState';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
@@ -29,9 +29,9 @@ export const NameFields = ({
   onFirstNameUpdate,
   onLastNameUpdate,
 }: NameFieldsProps) => {
-  const currentUser = useRecoilValue(currentUserState());
+  const currentUser = useRecoilValue(currentUserState);
   const [currentWorkspaceMember, setCurrentWorkspaceMember] = useRecoilState(
-    currentWorkspaceMemberState(),
+    currentWorkspaceMemberState,
   );
 
   const [firstName, setFirstName] = useState(
@@ -46,7 +46,7 @@ export const NameFields = ({
   });
 
   // TODO: Enhance this with react-web-hook-form (https://www.react-hook-form.com)
-  const debouncedUpdate = debounce(async () => {
+  const debouncedUpdate = useDebouncedCallback(async () => {
     onFirstNameUpdate?.(firstName);
     onLastNameUpdate?.(lastName);
 
@@ -84,9 +84,13 @@ export const NameFields = ({
       return;
     }
 
+    const { firstName: currentFirstName, lastName: currentLastName } =
+      currentWorkspaceMember.name;
+
     if (
-      currentWorkspaceMember.name?.firstName !== firstName ||
-      currentWorkspaceMember.name?.lastName !== lastName
+      (currentFirstName !== firstName || currentLastName !== lastName) &&
+      firstName !== '' &&
+      lastName !== ''
     ) {
       debouncedUpdate();
     }

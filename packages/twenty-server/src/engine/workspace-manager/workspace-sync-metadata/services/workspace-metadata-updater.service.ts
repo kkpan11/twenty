@@ -1,30 +1,41 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 
-import { EntityManager, In } from 'typeorm';
+import { capitalize, FieldMetadataType } from 'twenty-shared';
+import {
+  EntityManager,
+  EntityTarget,
+  FindOptionsWhere,
+  In,
+  ObjectLiteral,
+  Repository,
+} from 'typeorm';
+import { DeepPartial } from 'typeorm/common/DeepPartial';
 import { v4 as uuidV4 } from 'uuid';
-import omit from 'lodash.omit';
 
 import { PartialFieldMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-field-metadata.interface';
+import { PartialIndexMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-index-metadata.interface';
 
-import { ObjectMetadataEntity } from 'src/engine-metadata/object-metadata/object-metadata.entity';
-import {
-  FieldMetadataEntity,
-  FieldMetadataType,
-} from 'src/engine-metadata/field-metadata/field-metadata.entity';
-import { RelationMetadataEntity } from 'src/engine-metadata/relation-metadata/relation-metadata.entity';
-import { FieldMetadataComplexOption } from 'src/engine-metadata/field-metadata/dtos/options.input';
+import { compositeTypeDefinitions } from 'src/engine/metadata-modules/field-metadata/composite-types';
+import { FieldMetadataComplexOption } from 'src/engine/metadata-modules/field-metadata/dtos/options.input';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { isCompositeFieldMetadataType } from 'src/engine/metadata-modules/field-metadata/utils/is-composite-field-metadata-type.util';
+import { IndexFieldMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-field-metadata.entity';
+import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
+import { CompositeFieldMetadataType } from 'src/engine/metadata-modules/workspace-migration/factories/composite-column-action.factory';
+import { FieldMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-field.factory';
+import { ObjectMetadataUpdate } from 'src/engine/workspace-manager/workspace-migration-builder/factories/workspace-migration-object.factory';
 import { WorkspaceSyncStorage } from 'src/engine/workspace-manager/workspace-sync-metadata/storage/workspace-sync.storage';
 
 @Injectable()
 export class WorkspaceMetadataUpdaterService {
-  private readonly logger = new Logger(WorkspaceMetadataUpdaterService.name);
-
   async updateObjectMetadata(
     manager: EntityManager,
     storage: WorkspaceSyncStorage,
   ): Promise<{
     createdObjectMetadataCollection: ObjectMetadataEntity[];
-    updatedObjectMetadataCollection: ObjectMetadataEntity[];
+    updatedObjectMetadataCollection: ObjectMetadataUpdate[];
   }> {
     const objectMetadataRepository =
       manager.getRepository(ObjectMetadataEntity);
@@ -37,9 +48,6 @@ export class WorkspaceMetadataUpdaterService {
         storage.objectMetadataCreateCollection.map((objectMetadata) => ({
           ...objectMetadata,
           isActive: true,
-          fields: objectMetadata.fields.map((field) =>
-            this.prepareFieldMetadataForCreation(field),
-          ),
         })) as DeepPartial<ObjectMetadataEntity>[],
       );
     const identifiers = createdPartialObjectMetadataCollection.map(
@@ -56,10 +64,17 @@ export class WorkspaceMetadataUpdaterService {
     /**
      * Update object metadata
      */
-    const updatedObjectMetadataCollection = await objectMetadataRepository.save(
-      storage.objectMetadataUpdateCollection.map((objectMetadata) =>
-        omit(objectMetadata, ['fields']),
-      ),
+    const updatedObjectMetadataCollection = await this.updateEntities(
+      manager,
+      ObjectMetadataEntity,
+      storage.objectMetadataUpdateCollection,
+      [
+        'fields',
+        'dataSourceId',
+        'workspaceId',
+        'labelIdentifierFieldMetadataId',
+        'imageIdentifierFieldMetadataId',
+      ],
     );
 
     /**
@@ -90,7 +105,6 @@ export class WorkspaceMetadataUpdaterService {
             ),
           }
         : {}),
-      isActive: true,
     };
   }
 
@@ -108,12 +122,24 @@ export class WorkspaceMetadataUpdaterService {
     storage: WorkspaceSyncStorage,
   ): Promise<{
     createdFieldMetadataCollection: FieldMetadataEntity[];
-    updatedFieldMetadataCollection: {
-      current: FieldMetadataEntity;
-      altered: FieldMetadataEntity;
-    }[];
+    updatedFieldMetadataCollection: FieldMetadataUpdate[];
   }> {
     const fieldMetadataRepository = manager.getRepository(FieldMetadataEntity);
+    const indexFieldMetadataRepository = manager.getRepository(
+      IndexFieldMetadataEntity,
+    );
+    const indexMetadataRepository = manager.getRepository(IndexMetadataEntity);
+
+    /**
+     * Update field metadata
+     */
+    const updatedFieldMetadataCollection =
+      await this.updateEntities<FieldMetadataEntity>(
+        manager,
+        FieldMetadataEntity,
+        storage.fieldMetadataUpdateCollection,
+        ['objectMetadataId', 'workspaceId'],
+      );
 
     /**
      * Create field metadata
@@ -122,45 +148,6 @@ export class WorkspaceMetadataUpdaterService {
       storage.fieldMetadataCreateCollection.map((field) =>
         this.prepareFieldMetadataForCreation(field),
       ) as DeepPartial<FieldMetadataEntity>[],
-    );
-
-    /**
-     * Update field metadata
-     */
-    const oldFieldMetadataCollection = await fieldMetadataRepository.findBy({
-      id: In(storage.fieldMetadataUpdateCollection.map((field) => field.id)),
-    });
-    // Pre-process old collection into a mapping for quick access
-    const oldFieldMetadataMap = new Map(
-      oldFieldMetadataCollection.map((field) => [field.id, field]),
-    );
-    // Combine old and new field metadata to get whole updated entities
-    const fieldMetadataUpdateCollection =
-      storage.fieldMetadataUpdateCollection.map((updateFieldMetadata) => {
-        const oldFieldMetadata = oldFieldMetadataMap.get(
-          updateFieldMetadata.id,
-        );
-
-        if (!oldFieldMetadata) {
-          throw new Error(`
-            Field ${updateFieldMetadata.id} not found in oldFieldMetadataCollection`);
-        }
-
-        // TypeORM 😢
-        // If we didn't provide the old value, it will be set to null fields that are not in the updateFieldMetadata
-        // and override the old value with null in the DB.
-        // Also save method doesn't return the whole entity if you give a partial one.
-        // https://github.com/typeorm/typeorm/issues/3490
-        // To avoid calling update in a for loop, we did this hack.
-        return {
-          ...omit(oldFieldMetadata, ['objectMetadataId', 'workspaceId']),
-          ...omit(updateFieldMetadata, ['objectMetadataId', 'workspaceId']),
-          options: updateFieldMetadata.options ?? oldFieldMetadata.options,
-        };
-      });
-
-    const updatedFieldMetadataCollection = await fieldMetadataRepository.save(
-      fieldMetadataUpdateCollection,
     );
 
     /**
@@ -173,6 +160,12 @@ export class WorkspaceMetadataUpdaterService {
       );
 
     if (fieldMetadataDeleteCollectionWithoutRelationType.length > 0) {
+      await this.deleteIndexFieldMetadata(
+        fieldMetadataDeleteCollectionWithoutRelationType,
+        indexFieldMetadataRepository,
+        indexMetadataRepository,
+      );
+
       await fieldMetadataRepository.delete(
         fieldMetadataDeleteCollectionWithoutRelationType.map(
           (field) => field.id,
@@ -183,29 +176,35 @@ export class WorkspaceMetadataUpdaterService {
     return {
       createdFieldMetadataCollection:
         createdFieldMetadataCollection as FieldMetadataEntity[],
-      updatedFieldMetadataCollection: updatedFieldMetadataCollection.map(
-        (alteredFieldMetadata) => {
-          const oldFieldMetadata = oldFieldMetadataMap.get(
-            alteredFieldMetadata.id,
-          );
-
-          if (!oldFieldMetadata) {
-            throw new Error(`
-              Field ${alteredFieldMetadata.id} not found in oldFieldMetadataCollection
-            `);
-          }
-
-          return {
-            current: oldFieldMetadata as FieldMetadataEntity,
-            altered: {
-              ...alteredFieldMetadata,
-              objectMetadataId: oldFieldMetadata.objectMetadataId,
-              workspaceId: oldFieldMetadata.workspaceId,
-            } as FieldMetadataEntity,
-          };
-        },
-      ),
+      updatedFieldMetadataCollection,
     };
+  }
+
+  async deleteIndexFieldMetadata(
+    fieldMetadataDeleteCollectionWithoutRelationType: Partial<FieldMetadataEntity>[],
+    indexFieldMetadataRepository: Repository<IndexFieldMetadataEntity>,
+    indexMetadataRepository: Repository<IndexMetadataEntity>,
+  ) {
+    const indexFieldMetadatas = await indexFieldMetadataRepository.find({
+      where: {
+        fieldMetadataId: In(
+          fieldMetadataDeleteCollectionWithoutRelationType.map(
+            (field) => field.id,
+          ),
+        ),
+      },
+      relations: {
+        indexMetadata: true,
+      },
+    });
+
+    const uniqueIndexMetadataIds = [
+      ...new Set(indexFieldMetadatas.map((field) => field.indexMetadataId)),
+    ];
+
+    if (uniqueIndexMetadataIds.length > 0) {
+      await indexMetadataRepository.delete(uniqueIndexMetadataIds);
+    }
   }
 
   async updateRelationMetadata(
@@ -266,5 +265,181 @@ export class WorkspaceMetadataUpdaterService {
       createdRelationMetadataCollection,
       updatedRelationMetadataCollection,
     };
+  }
+
+  async updateIndexMetadata(
+    manager: EntityManager,
+    storage: WorkspaceSyncStorage,
+    originalObjectMetadataCollection: ObjectMetadataEntity[],
+  ): Promise<{
+    createdIndexMetadataCollection: IndexMetadataEntity[];
+  }> {
+    const indexMetadataRepository = manager.getRepository(IndexMetadataEntity);
+
+    const convertIndexMetadataForSaving = (
+      indexMetadata: PartialIndexMetadata,
+    ) => {
+      const convertIndexFieldMetadataForSaving = (
+        column: string,
+        order: number,
+      ): DeepPartial<IndexFieldMetadataEntity> => {
+        // Ensure correct type
+        const fieldMetadata = originalObjectMetadataCollection
+          .find((object) => object.id === indexMetadata.objectMetadataId)
+          ?.fields.find((field) => {
+            if (field.name === column) {
+              return true;
+            }
+
+            if (!isCompositeFieldMetadataType(field.type)) {
+              return;
+            }
+
+            const compositeType = compositeTypeDefinitions.get(
+              field.type as CompositeFieldMetadataType,
+            );
+
+            if (!compositeType) {
+              throw new Error(
+                `Composite type definition not found for type: ${field.type}`,
+              );
+            }
+
+            const columnNames = compositeType.properties.reduce(
+              (acc, column) => {
+                acc.push(`${field.name}${capitalize(column.name)}`);
+
+                return acc;
+              },
+              [] as string[],
+            );
+
+            if (columnNames.includes(column)) {
+              return true;
+            }
+          });
+
+        if (!fieldMetadata) {
+          throw new Error(`
+            Field metadata not found for column ${column} in object ${indexMetadata.objectMetadataId}
+          `);
+        }
+
+        return {
+          fieldMetadataId: fieldMetadata.id,
+          order,
+        };
+      };
+
+      return {
+        ...indexMetadata,
+        indexFieldMetadatas: indexMetadata.columns.map((column, index) =>
+          convertIndexFieldMetadataForSaving(column, index),
+        ),
+      };
+    };
+
+    /**
+     * Create index metadata
+     */
+    const createdIndexMetadataCollection = await indexMetadataRepository.save(
+      storage.indexMetadataCreateCollection.map(convertIndexMetadataForSaving),
+    );
+
+    /**
+     * Delete index metadata
+     */
+    if (storage.indexMetadataDeleteCollection.length > 0) {
+      await indexMetadataRepository.delete(
+        storage.indexMetadataDeleteCollection.map(
+          (indexMetadata) => indexMetadata.id,
+        ),
+      );
+    }
+
+    return {
+      createdIndexMetadataCollection,
+    };
+  }
+
+  /**
+   * Update entities in the database
+   * @param manager EntityManager
+   * @param entityClass Entity class
+   * @param updateCollection Update collection
+   * @param keysToOmit keys to omit in the merge process
+   * @returns Promise<{ current: Entity; altered: Entity }[]>
+   */
+  private async updateEntities<Entity extends ObjectLiteral & { id: string }>(
+    manager: EntityManager,
+    entityClass: EntityTarget<Entity>,
+    updateCollection: Array<
+      DeepPartial<Omit<Entity, 'fields' | 'options' | 'settings'>> & {
+        id: string;
+      }
+    >,
+    keysToOmit: (keyof Entity)[] = [],
+  ): Promise<{ current: Entity; altered: Entity }[]> {
+    const repository = manager.getRepository(entityClass);
+
+    const oldEntities = await repository.findBy({
+      id: In(updateCollection.map((updateItem) => updateItem.id)),
+    } as FindOptionsWhere<Entity>);
+
+    // Pre-process old collection into a mapping for quick access
+    const oldEntitiesMap = new Map(
+      oldEntities.map((oldEntity) => [oldEntity.id, oldEntity]),
+    );
+
+    // Combine old and new field metadata to get whole updated entities
+    const entityUpdateCollection = updateCollection.map((updateItem) => {
+      const oldEntity = oldEntitiesMap.get(updateItem.id);
+
+      if (!oldEntity) {
+        throw new Error(`
+              Entity ${updateItem.id} not found in oldEntities`);
+      }
+
+      // TypeORM 😢
+      // If we didn't provide the old value, it will be set to null objects that are not in the updateObjectMetadata
+      // and override the old value with null in the DB.
+      // Also save method doesn't return the whole entity if you give a partial one.
+      // https://github.com/typeorm/typeorm/issues/3490
+      // To avoid calling update in a for loop, we did this hack.
+      const mergedUpdate = {
+        ...oldEntity,
+        ...updateItem,
+      };
+
+      // Omit keys that we don't want to override
+      keysToOmit.forEach((key) => {
+        delete mergedUpdate[key];
+      });
+
+      return mergedUpdate;
+    });
+
+    const updatedEntities = await repository.save(entityUpdateCollection);
+
+    return updatedEntities.map((updatedEntity) => {
+      const oldEntity = oldEntitiesMap.get(updatedEntity.id);
+
+      if (!oldEntity) {
+        throw new Error(`
+            Entity ${updatedEntity.id} not found in oldEntitiesMap
+          `);
+      }
+
+      return {
+        current: oldEntity,
+        altered: {
+          ...updatedEntity,
+          ...keysToOmit.reduce(
+            (acc, key) => ({ ...acc, [key]: oldEntity[key] }),
+            {},
+          ),
+        },
+      };
+    });
   }
 }

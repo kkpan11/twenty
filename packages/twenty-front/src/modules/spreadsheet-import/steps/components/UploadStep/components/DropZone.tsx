@@ -1,12 +1,13 @@
+import styled from '@emotion/styled';
 import { useState } from 'react';
 import { useDropzone } from 'react-dropzone';
-import styled from '@emotion/styled';
 import * as XLSX from 'xlsx-ugnis';
 
 import { useSpreadsheetImportInternal } from '@/spreadsheet-import/hooks/useSpreadsheetImportInternal';
 import { readFileAsync } from '@/spreadsheet-import/utils/readFilesAsync';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { MainButton } from '@/ui/input/button/components/MainButton';
+import { MainButton } from 'twenty-ui';
 
 const StyledContainer = styled.div`
   align-items: center;
@@ -78,11 +79,7 @@ const StyledText = styled.span`
   font-size: ${({ theme }) => theme.font.size.sm};
   font-weight: ${({ theme }) => theme.font.weight.medium};
   text-align: center;
-`;
-
-const StyledButton = styled(MainButton)`
-  margin-top: ${({ theme }) => theme.spacing(2)};
-  width: 200px;
+  padding: 16px;
 `;
 
 type DropZoneProps = {
@@ -112,9 +109,9 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
     onDropRejected: (fileRejections) => {
       setLoading(false);
       fileRejections.forEach((fileRejection) => {
-        enqueueSnackBar(fileRejection.errors[0].message, {
-          title: `${fileRejection.file.name} upload rejected`,
-          variant: 'error',
+        enqueueSnackBar(`${fileRejection.file.name} upload rejected`, {
+          detailedMessage: fileRejection.errors[0].message,
+          variant: SnackBarVariant.Error,
         });
       });
     },
@@ -123,6 +120,7 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
       const arrayBuffer = await readFileAsync(file);
       const workbook = XLSX.read(arrayBuffer, {
         cellDates: true,
+        codepage: 65001, // UTF-8 codepage
         dateNF: dateFormat,
         raw: parseRaw,
         dense: true,
@@ -149,7 +147,7 @@ export const DropZone = ({ onContinue, isLoading }: DropZoneProps) => {
       ) : (
         <>
           <StyledText>Upload .xlsx, .xls or .csv file</StyledText>
-          <StyledButton onClick={open} title="Select file" />
+          <MainButton onClick={open} title="Select file" />
         </>
       )}
     </StyledContainer>

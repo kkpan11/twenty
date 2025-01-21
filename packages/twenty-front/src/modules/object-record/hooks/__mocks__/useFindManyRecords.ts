@@ -5,7 +5,7 @@ export const query = gql`
     $filter: PersonFilterInput
     $orderBy: PersonOrderByInput
     $lastCursor: String
-    $limit: Float
+    $limit: Int
   ) {
     people(
       filter: $filter
@@ -26,8 +26,7 @@ export const query = gql`
                 pointOfContactId
                 updatedAt
                 companyId
-                pipelineStepId
-                probability
+                stage
                 closeDate
                 amount {
                   amountMicros
@@ -39,8 +38,8 @@ export const query = gql`
             }
           }
           xLink {
-            label
-            url
+            primaryLinkLabel
+            primaryLinkUrl
           }
           id
           pointOfContactForOpportunities {
@@ -52,8 +51,7 @@ export const query = gql`
                 pointOfContactId
                 updatedAt
                 companyId
-                pipelineStepId
-                probability
+                stage
                 closeDate
                 amount {
                   amountMicros
@@ -69,12 +67,12 @@ export const query = gql`
             __typename
             id
             xLink {
-              label
-              url
+              primaryLinkLabel
+              primaryLinkUrl
             }
             linkedinLink {
-              label
-              url
+              primaryLinkLabel
+              primaryLinkUrl
             }
             domainName
             annualRecurringRevenue {
@@ -82,7 +80,16 @@ export const query = gql`
               currencyCode
             }
             createdAt
-            address
+            address {
+              addressStreet1
+              addressStreet2
+              addressCity
+              addressState
+              addressCountry
+              addressPostcode
+              addressLat
+              addressLng
+            }
             updatedAt
             name
             accountOwnerId
@@ -92,20 +99,6 @@ export const query = gql`
           }
           city
           email
-          activityTargets {
-            edges {
-              node {
-                __typename
-                id
-                updatedAt
-                createdAt
-                personId
-                activityId
-                companyId
-                id
-              }
-            }
-          }
           jobTitle
           favorites {
             edges {
@@ -130,7 +123,6 @@ export const query = gql`
                 createdAt
                 name
                 personId
-                activityId
                 companyId
                 id
                 authorId
@@ -145,8 +137,8 @@ export const query = gql`
           }
           phone
           linkedinLink {
-            label
-            url
+            primaryLinkLabel
+            primaryLinkUrl
           }
           updatedAt
           avatarUrl

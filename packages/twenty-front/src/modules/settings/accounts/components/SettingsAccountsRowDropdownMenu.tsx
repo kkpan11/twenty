@@ -1,67 +1,87 @@
-import { useNavigate } from 'react-router-dom';
+import {
+  IconCalendarEvent,
+  IconDotsVertical,
+  IconMail,
+  IconRefresh,
+  IconTrash,
+  LightIconButton,
+  MenuItem,
+} from 'twenty-ui';
 
 import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
-import { useDeleteOneRecord } from '@/object-record/hooks/useDeleteOneRecord';
-import { IconDotsVertical, IconMail, IconTrash } from '@/ui/display/icon';
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
+import { useDestroyOneRecord } from '@/object-record/hooks/useDestroyOneRecord';
+import { useTriggerApisOAuth } from '@/settings/accounts/hooks/useTriggerApiOAuth';
+import { SettingsPath } from '@/types/SettingsPath';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
-import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
 
 type SettingsAccountsRowDropdownMenuProps = {
-  account: Pick<ConnectedAccount, 'id' | 'messageChannels'>;
-  className?: string;
+  account: ConnectedAccount;
 };
 
 export const SettingsAccountsRowDropdownMenu = ({
   account,
-  className,
 }: SettingsAccountsRowDropdownMenuProps) => {
   const dropdownId = `settings-account-row-${account.id}`;
 
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
   const { closeDropdown } = useDropdown(dropdownId);
 
-  const { deleteOneRecord } = useDeleteOneRecord({
+  const { destroyOneRecord } = useDestroyOneRecord({
     objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
   });
+  const { triggerApisOAuth } = useTriggerApisOAuth();
 
   return (
     <Dropdown
       dropdownId={dropdownId}
-      className={className}
       dropdownPlacement="right-start"
       dropdownHotkeyScope={{ scope: dropdownId }}
       clickableComponent={
         <LightIconButton Icon={IconDotsVertical} accent="tertiary" />
       }
+      dropdownMenuWidth={160}
       dropdownComponents={
-        <DropdownMenu>
-          <DropdownMenuItemsContainer>
+        <DropdownMenuItemsContainer>
+          <MenuItem
+            LeftIcon={IconMail}
+            text="Emails settings"
+            onClick={() => {
+              navigate(SettingsPath.AccountsEmails);
+              closeDropdown();
+            }}
+          />
+          <MenuItem
+            LeftIcon={IconCalendarEvent}
+            text="Calendar settings"
+            onClick={() => {
+              navigate(SettingsPath.AccountsCalendars);
+              closeDropdown();
+            }}
+          />
+          {account.authFailedAt && (
             <MenuItem
-              LeftIcon={IconMail}
-              text="Emails settings"
+              LeftIcon={IconRefresh}
+              text="Reconnect"
               onClick={() => {
-                navigate(
-                  `/settings/accounts/emails/${account.messageChannels.edges[0].node.id}`,
-                );
+                triggerApisOAuth(account.provider);
                 closeDropdown();
               }}
             />
-            <MenuItem
-              accent="danger"
-              LeftIcon={IconTrash}
-              text="Remove account"
-              onClick={() => {
-                deleteOneRecord(account.id);
-                closeDropdown();
-              }}
-            />
-          </DropdownMenuItemsContainer>
-        </DropdownMenu>
+          )}
+          <MenuItem
+            accent="danger"
+            LeftIcon={IconTrash}
+            text="Remove account"
+            onClick={() => {
+              destroyOneRecord(account.id);
+              closeDropdown();
+            }}
+          />
+        </DropdownMenuItemsContainer>
       }
     />
   );

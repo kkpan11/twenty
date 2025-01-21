@@ -1,6 +1,6 @@
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
 import { Sort } from '@/object-record/object-sort-dropdown/types/Sort';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
+import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
 import { ViewField } from '@/views/types/ViewField';
 import { ViewFilter } from '@/views/types/ViewFilter';
@@ -10,31 +10,35 @@ import { mapColumnDefinitionsToViewFields } from '@/views/utils/mapColumnDefinit
 import { mapViewFieldsToColumnDefinitions } from '@/views/utils/mapViewFieldsToColumnDefinitions';
 import { mapViewFiltersToFilters } from '@/views/utils/mapViewFiltersToFilters';
 import { mapViewSortsToSorts } from '@/views/utils/mapViewSortsToSorts';
+import { FieldMetadataType } from '~/generated/graphql';
 
 const baseDefinition = {
-  fieldMetadataId: 'fieldMetadataId',
+  fieldMetadataId: '05731f68-6e7a-4903-8374-c0b6a9063482',
   label: 'label',
   iconName: 'iconName',
+  fieldName: 'fieldName',
 };
 
 describe('mapViewSortsToSorts', () => {
   it('should map each ViewSort object to a corresponding Sort object', () => {
     const viewSorts: ViewSort[] = [
       {
+        __typename: 'ViewSort',
         id: 'id',
-        fieldMetadataId: 'fieldMetadataId',
+        fieldMetadataId: '05731f68-6e7a-4903-8374-c0b6a9063482',
         direction: 'asc',
-        definition: baseDefinition,
       },
     ];
     const expectedSorts: Sort[] = [
       {
-        fieldMetadataId: 'fieldMetadataId',
+        fieldMetadataId: '05731f68-6e7a-4903-8374-c0b6a9063482',
         direction: 'asc',
         definition: baseDefinition,
       },
     ];
-    expect(mapViewSortsToSorts(viewSorts)).toEqual(expectedSorts);
+    expect(mapViewSortsToSorts(viewSorts, [baseDefinition])).toEqual(
+      expectedSorts,
+    );
   });
 });
 
@@ -42,20 +46,18 @@ describe('mapViewFiltersToFilters', () => {
   it('should map each ViewFilter object to a corresponding Filter object', () => {
     const viewFilters: ViewFilter[] = [
       {
+        __typename: 'ViewFilter',
         id: 'id',
-        fieldMetadataId: '1',
+        fieldMetadataId: '05731f68-6e7a-4903-8374-c0b6a9063482',
         value: 'testValue',
         displayValue: 'Test Display Value',
         operand: ViewFilterOperand.Is,
-        definition: {
-          ...baseDefinition,
-          type: 'FULL_NAME',
-        },
       },
     ];
-    const expectedFilters: Filter[] = [
+    const expectedFilters: RecordFilter[] = [
       {
-        fieldMetadataId: '1',
+        id: 'id',
+        fieldMetadataId: '05731f68-6e7a-4903-8374-c0b6a9063482',
         value: 'testValue',
         displayValue: 'Test Display Value',
         operand: ViewFilterOperand.Is,
@@ -65,7 +67,14 @@ describe('mapViewFiltersToFilters', () => {
         },
       },
     ];
-    expect(mapViewFiltersToFilters(viewFilters)).toEqual(expectedFilters);
+    expect(
+      mapViewFiltersToFilters(viewFilters, [
+        {
+          ...baseDefinition,
+          type: 'FULL_NAME',
+        },
+      ]),
+    ).toEqual(expectedFilters);
   });
 });
 
@@ -73,6 +82,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
   it('should map visible ViewFields to ColumnDefinitions and filter out missing fieldMetadata', () => {
     const viewFields: ViewField[] = [
       {
+        __typename: 'ViewField',
         id: '1',
         fieldMetadataId: '1',
         position: 1,
@@ -84,7 +94,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
           metadata: { fieldName: 'fieldName 1' },
           infoTooltipContent: 'infoTooltipContent 1',
           iconName: 'iconName 1',
-          type: 'TEXT',
+          type: FieldMetadataType.Text,
           position: 1,
           size: 1,
           isVisible: false,
@@ -92,6 +102,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         },
       },
       {
+        __typename: 'ViewField',
         id: '2',
         fieldMetadataId: '2',
         position: 2,
@@ -103,7 +114,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
           metadata: { fieldName: 'fieldName 2' },
           infoTooltipContent: 'infoTooltipContent 2',
           iconName: 'iconName 2',
-          type: 'TEXT',
+          type: FieldMetadataType.Text,
           position: 2,
           size: 1,
           isVisible: false,
@@ -111,6 +122,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         },
       },
       {
+        __typename: 'ViewField',
         id: '3',
         fieldMetadataId: '3',
         position: 3,
@@ -122,7 +134,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
           metadata: { fieldName: 'fieldName 3' },
           infoTooltipContent: 'infoTooltipContent 3',
           iconName: 'iconName 3',
-          type: 'TEXT',
+          type: FieldMetadataType.Text,
           position: 3,
           size: 1,
           isVisible: false,
@@ -139,7 +151,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         metadata: { fieldName: 'fieldName 1' },
         infoTooltipContent: 'infoTooltipContent 1',
         iconName: 'iconName 1',
-        type: 'TEXT',
+        type: FieldMetadataType.Text,
         size: 1,
       },
       {
@@ -149,7 +161,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         metadata: { fieldName: 'fieldName 3' },
         infoTooltipContent: 'infoTooltipContent 3',
         iconName: 'iconName 3',
-        type: 'TEXT',
+        type: FieldMetadataType.Text,
         size: 3,
       },
     ];
@@ -161,7 +173,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         metadata: { fieldName: 'fieldName 1' },
         infoTooltipContent: 'infoTooltipContent 1',
         iconName: 'iconName 1',
-        type: 'TEXT',
+        type: FieldMetadataType.Text,
         size: 1,
         position: 1,
         isVisible: false,
@@ -173,7 +185,7 @@ describe('mapViewFieldsToColumnDefinitions', () => {
         metadata: { fieldName: 'fieldName 3' },
         infoTooltipContent: 'infoTooltipContent 3',
         iconName: 'iconName 3',
-        type: 'TEXT',
+        type: FieldMetadataType.Text,
         size: 3,
         position: 3,
         isVisible: true,
@@ -209,13 +221,16 @@ describe('mapColumnDefinitionsToViewFields', () => {
 
     const expectedViewFields = [
       {
+        __typename: 'ViewField',
         id: 'custom-id-1',
         fieldMetadataId: 1,
         position: 1,
         isVisible: true,
         definition: columnDefinitions[0],
+        size: undefined,
       },
       {
+        __typename: 'ViewField',
         id: '',
         fieldMetadataId: 2,
         position: 2,

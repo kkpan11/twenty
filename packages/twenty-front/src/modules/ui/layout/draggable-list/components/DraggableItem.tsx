@@ -1,4 +1,3 @@
-import React from 'react';
 import { useTheme } from '@emotion/react';
 import { Draggable } from '@hello-pangea/dnd';
 
@@ -7,6 +6,7 @@ type DraggableItemProps = {
   isDragDisabled?: boolean;
   index: number;
   itemComponent: JSX.Element;
+  isInsideScrollableContainer?: boolean;
 };
 
 export const DraggableItem = ({
@@ -14,6 +14,7 @@ export const DraggableItem = ({
   isDragDisabled = false,
   index,
   itemComponent,
+  isInsideScrollableContainer,
 }: DraggableItemProps) => {
   const theme = useTheme();
   return (
@@ -36,7 +37,7 @@ export const DraggableItem = ({
             style={{
               ...draggableStyle,
               left: 'auto',
-              top: 'auto',
+              ...(isInsideScrollableContainer ? {} : { top: 'auto' }),
               transform: draggableStyle?.transform?.replace(
                 /\(-?\d+px,/,
                 '(0,',

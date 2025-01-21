@@ -1,6 +1,6 @@
 import { SafeParseSuccess } from 'zod';
 
-import { UpdateObjectInput } from '~/generated-metadata/graphql';
+import { UpdateObjectPayload } from '~/generated-metadata/graphql';
 
 import { settingsUpdateObjectInputSchema } from '../settingsUpdateObjectInputSchema';
 
@@ -12,6 +12,8 @@ describe('settingsUpdateObjectInputSchema', () => {
       icon: 'IconName',
       labelPlural: 'Labels Plural    ',
       labelSingular: '   Label Singular',
+      namePlural: 'namePlural',
+      nameSingular: 'nameSingular',
       labelIdentifierFieldMetadataId: '3fa85f64-5717-4562-b3fc-2c963f66afa6',
     };
 
@@ -20,14 +22,14 @@ describe('settingsUpdateObjectInputSchema', () => {
 
     // Then
     expect(result.success).toBe(true);
-    expect((result as SafeParseSuccess<UpdateObjectInput>).data).toEqual({
+    expect((result as SafeParseSuccess<UpdateObjectPayload>).data).toEqual({
       description: validInput.description,
       icon: validInput.icon,
       labelIdentifierFieldMetadataId: validInput.labelIdentifierFieldMetadataId,
       labelPlural: 'Labels Plural',
       labelSingular: 'Label Singular',
-      namePlural: 'labelsPlural',
-      nameSingular: 'labelSingular',
+      namePlural: 'namePlural',
+      nameSingular: 'nameSingular',
     });
   });
 

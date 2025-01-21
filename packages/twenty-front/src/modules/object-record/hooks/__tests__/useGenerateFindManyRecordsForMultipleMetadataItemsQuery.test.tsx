@@ -1,22 +1,29 @@
-import { ReactNode } from 'react';
+import { expect } from '@storybook/test';
 import { renderHook } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { RecoilRoot } from 'recoil';
 
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { useGenerateFindManyRecordsForMultipleMetadataItemsQuery } from '@/object-record/hooks/useGenerateFindManyRecordsForMultipleMetadataItemsQuery';
+import { useGenerateCombinedFindManyRecordsQuery } from '@/object-record/multiple-objects/hooks/useGenerateCombinedFindManyRecordsQuery';
+import { JestObjectMetadataItemSetter } from '~/testing/jest/JestObjectMetadataItemSetter';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>{children}</RecoilRoot>
+  <RecoilRoot>
+    <JestObjectMetadataItemSetter>{children}</JestObjectMetadataItemSetter>
+  </RecoilRoot>
 );
 
 describe('useGenerateFindManyRecordsForMultipleMetadataItemsQuery', () => {
   it('should work as expected', async () => {
     const { result } = renderHook(
       () => {
-        const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
-        return useGenerateFindManyRecordsForMultipleMetadataItemsQuery({
-          objectMetadataItems: mockObjectMetadataItems.slice(0, 2),
+        return useGenerateCombinedFindManyRecordsQuery({
+          operationSignatures: generatedMockObjectMetadataItems
+            .slice(0, 2)
+            .map((item) => ({
+              objectNameSingular: item.nameSingular,
+              variables: {},
+            })),
         });
       },
       {

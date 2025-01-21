@@ -1,10 +1,8 @@
 import styled from '@emotion/styled';
 
-import { TasksRecoilScopeContext } from '@/activities/states/recoil-scope-contexts/TasksRecoilScopeContext';
 import { TaskGroups } from '@/activities/tasks/components/TaskGroups';
 import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { ObjectFilterDropdownScope } from '@/object-record/object-filter-dropdown/scopes/ObjectFilterDropdownScope';
-import { RecoilScope } from '@/ui/utilities/recoil-scope/components/RecoilScope';
+import { ObjectFilterDropdownComponentInstanceContext } from '@/object-record/object-filter-dropdown/states/contexts/ObjectFilterDropdownComponentInstanceContext';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -21,11 +19,11 @@ export const ObjectTasks = ({
 }) => {
   return (
     <StyledContainer>
-      <RecoilScope CustomRecoilScopeContext={TasksRecoilScopeContext}>
-        <ObjectFilterDropdownScope filterScopeId="entity-tasks-filter-scope">
-          <TaskGroups targetableObjects={[targetableObject]} showAddButton />
-        </ObjectFilterDropdownScope>
-      </RecoilScope>
+      <ObjectFilterDropdownComponentInstanceContext.Provider
+        value={{ instanceId: 'entity-tasks-filter-scope' }}
+      >
+        <TaskGroups targetableObjects={[targetableObject]} />
+      </ObjectFilterDropdownComponentInstanceContext.Provider>
     </StyledContainer>
   );
 };

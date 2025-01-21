@@ -2,7 +2,7 @@ import { SafeParseSuccess } from 'zod';
 
 import { CreateObjectInput } from '~/generated-metadata/graphql';
 
-import { settingsCreateObjectInputSchema } from '..//settingsCreateObjectInputSchema';
+import { settingsCreateObjectInputSchema } from '../settingsCreateObjectInputSchema';
 
 describe('settingsCreateObjectInputSchema', () => {
   it('validates a valid input and adds name properties', () => {
@@ -12,6 +12,9 @@ describe('settingsCreateObjectInputSchema', () => {
       icon: 'IconPlus',
       labelPlural: ' Labels     ',
       labelSingular: 'Label ',
+      namePlural: 'namePlural',
+      nameSingular: 'nameSingular',
+      isLabelSyncedWithName: false,
     };
 
     // When
@@ -24,8 +27,9 @@ describe('settingsCreateObjectInputSchema', () => {
       icon: validInput.icon,
       labelPlural: 'Labels',
       labelSingular: 'Label',
-      namePlural: 'labels',
-      nameSingular: 'label',
+      namePlural: 'namePlural',
+      nameSingular: 'nameSingular',
+      isLabelSyncedWithName: false,
     });
   });
 

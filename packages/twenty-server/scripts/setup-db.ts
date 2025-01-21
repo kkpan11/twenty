@@ -1,10 +1,17 @@
 import console from 'console';
 
-import { camelToSnakeCase, connectionSource, performQuery } from './utils';
+import { rawDataSource } from 'src/database/typeorm/raw/raw.datasource';
 
-connectionSource
+import { camelToSnakeCase, performQuery } from './utils';
+
+rawDataSource
   .initialize()
   .then(async () => {
+    await performQuery(
+      'CREATE EXTENSION IF NOT EXISTS "vector"',
+      'create extension "vector (pgvector)"',
+    );
+
     await performQuery(
       'CREATE SCHEMA IF NOT EXISTS "public"',
       'create schema "public"',
@@ -17,15 +24,16 @@ connectionSource
       'CREATE SCHEMA IF NOT EXISTS "core"',
       'create schema "core"',
     );
-    await performQuery(
-      'CREATE EXTENSION IF NOT EXISTS "pg_graphql"',
-      'create extension pg_graphql',
-    );
 
     await performQuery(
       'CREATE EXTENSION IF NOT EXISTS "uuid-ossp"',
       'create extension "uuid-ossp"',
     );
+
+    // We paused the work on FDW
+    if (process.env.IS_FDW_ENABLED !== 'true') {
+      return;
+    }
 
     await performQuery(
       'CREATE EXTENSION IF NOT EXISTS "postgres_fdw"',
@@ -53,6 +61,9 @@ connectionSource
     ]; // See https://supabase.github.io/wrappers/
 
     for (const wrapper of supabaseWrappers) {
+      if (await checkForeignDataWrapperExists(`${wrapper.toLowerCase()}_fdw`)) {
+        continue;
+      }
       await performQuery(
         `
           CREATE FOREIGN DATA WRAPPER "${wrapper.toLowerCase()}_fdw"
@@ -64,35 +75,18 @@ connectionSource
         true,
       );
     }
-
-    await performQuery(
-      `COMMENT ON SCHEMA "core" IS '@graphql({"inflect_names": true})';`,
-      'inflect names for graphql',
-    );
-
-    await performQuery(
-      `
-      DROP FUNCTION IF EXISTS graphql;
-      CREATE FUNCTION graphql(
-        "operationName" text default null,
-        query text default null,
-        variables jsonb default null,
-        extensions jsonb default null
-      )
-        returns jsonb
-        language sql
-        as $$
-          select graphql.resolve(
-              query := query,
-              variables := coalesce(variables, '{}'),
-              "operationName" := "operationName",
-              extensions := extensions
-          );
-        $$;
-    `,
-      'create function graphql',
-    );
   })
   .catch((err) => {
     console.error('Error during Data Source initialization:', err);
   });
+
+async function checkForeignDataWrapperExists(
+  wrapperName: string,
+): Promise<boolean> {
+  const result = await rawDataSource.query(
+    `SELECT 1 FROM pg_foreign_data_wrapper WHERE fdwname = $1`,
+    [wrapperName],
+  );
+
+  return result.length > 0;
+}

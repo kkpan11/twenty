@@ -1,5 +1,5 @@
-import React from 'react';
 import { renderHook } from '@testing-library/react';
+import React from 'react';
 
 import { useAvailableScopeIdOrThrow } from '@/ui/utilities/recoil-scope/scopes-internal/hooks/useAvailableScopeId';
 import { createScopeInternalContext } from '@/ui/utilities/recoil-scope/scopes-internal/utils/createScopeInternalContext';
@@ -52,7 +52,7 @@ describe('useAvailableScopeIdOrThrow', () => {
   });
 
   it('should throw an error if no scopeId is provided and scopeId is undefined in the context', () => {
-    console.error = jest.fn();
+    global.console.error = jest.fn();
 
     const renderFunction = () =>
       renderHook(() => ({

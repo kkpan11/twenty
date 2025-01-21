@@ -1,6 +1,6 @@
 import { DataSource } from 'typeorm';
 
-import { FeatureFlagKeys } from 'src/engine/modules/feature-flag/feature-flag.entity';
+import { FeatureFlagKey } from 'src/engine/core-modules/feature-flag/enums/feature-flag-key.enum';
 
 const tableName = 'featureFlag';
 
@@ -16,12 +16,67 @@ export const seedFeatureFlags = async (
     .orIgnore()
     .values([
       {
-        key: FeatureFlagKeys.IsCalendarEnabled,
+        key: FeatureFlagKey.IsAirtableIntegrationEnabled,
         workspaceId: workspaceId,
         value: true,
       },
       {
-        key: FeatureFlagKeys.IsBlocklistEnabled,
+        key: FeatureFlagKey.IsPostgreSQLIntegrationEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsEventObjectEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsStripeIntegrationEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsFunctionSettingsEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsWorkflowEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsAnalyticsV2Enabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsGmailSendEmailScopeEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsUniqueIndexesEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsMicrosoftSyncEnabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsAdvancedFiltersEnabled,
+        workspaceId: workspaceId,
+        value: false,
+      },
+      {
+        key: FeatureFlagKey.IsCommandMenuV2Enabled,
+        workspaceId: workspaceId,
+        value: true,
+      },
+      {
+        key: FeatureFlagKey.IsLocalizationEnabled,
         workspaceId: workspaceId,
         value: true,
       },

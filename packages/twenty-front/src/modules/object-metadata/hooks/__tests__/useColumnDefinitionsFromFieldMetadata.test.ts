@@ -1,15 +1,40 @@
 import { renderHook } from '@testing-library/react';
+import { Nullable } from 'twenty-ui';
 
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { useColumnDefinitionsFromFieldMetadata } from '@/object-metadata/hooks/useColumnDefinitionsFromFieldMetadata';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { Nullable } from '~/types/Nullable';
+import { WorkspaceActivationStatus } from '~/generated/graphql';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
+
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: [],
+  onInitializeRecoilSnapshot: ({ set }) => {
+    set(currentWorkspaceState, {
+      id: '1',
+      featureFlags: [],
+      allowImpersonation: false,
+      subdomain: 'test',
+      activationStatus: WorkspaceActivationStatus.ACTIVE,
+      hasValidEntrepriseKey: false,
+      metadataVersion: 1,
+      isPublicInviteLinkEnabled: false,
+      isGoogleAuthEnabled: true,
+      isMicrosoftAuthEnabled: false,
+      isPasswordAuthEnabled: true,
+    });
+  },
+});
 
 describe('useColumnDefinitionsFromFieldMetadata', () => {
   it('should return empty definitions if no object is passed', () => {
     const { result } = renderHook(
       (objectMetadataItem?: Nullable<ObjectMetadataItem>) => {
         return useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
+      },
+      {
+        wrapper: Wrapper,
       },
     );
 
@@ -21,52 +46,26 @@ describe('useColumnDefinitionsFromFieldMetadata', () => {
     expect(result.current.sortDefinitions.length).toBe(0);
   });
 
-  it('should return empty definitions if object has no fields matching criteria', () => {
-    const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
-    const { result } = renderHook(
-      (objectMetadataItem?: Nullable<ObjectMetadataItem>) => {
-        return useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
-      },
-      {
-        initialProps: mockObjectMetadataItems[0],
-      },
+  it('should return expected definitions', () => {
+    const companyObjectMetadata = generatedMockObjectMetadataItems.find(
+      (item) => item.nameSingular === 'company',
     );
 
-    expect(result.current.columnDefinitions.length).toBe(0);
-    expect(result.current.filterDefinitions.length).toBe(0);
-    expect(result.current.sortDefinitions.length).toBe(0);
-  });
-
-  it('should return expected definitions', () => {
-    const mockObjectMetadataItems = getObjectMetadataItemsMock();
-
     const { result } = renderHook(
       (objectMetadataItem?: Nullable<ObjectMetadataItem>) => {
         return useColumnDefinitionsFromFieldMetadata(objectMetadataItem);
       },
       {
-        initialProps: mockObjectMetadataItems[1],
+        initialProps: companyObjectMetadata,
+        wrapper: Wrapper,
       },
     );
 
     const { columnDefinitions, filterDefinitions, sortDefinitions } =
       result.current;
 
-    expect(columnDefinitions.length).toBe(3);
-    expect(filterDefinitions.length).toBe(3);
-    expect(sortDefinitions.length).toBe(3);
-
-    expect(columnDefinitions[0].label).toBe('Expiration date');
-    expect(columnDefinitions[1].label).toBe('Name');
-    expect(columnDefinitions[2].label).toBe('Revocation date');
-
-    expect(filterDefinitions[0].label).toBe('Expiration date');
-    expect(filterDefinitions[1].label).toBe('Name');
-    expect(filterDefinitions[2].label).toBe('Revocation date');
-
-    expect(sortDefinitions[0].label).toBe('Expiration date');
-    expect(sortDefinitions[1].label).toBe('Name');
-    expect(sortDefinitions[2].label).toBe('Revocation date');
+    expect(columnDefinitions.length).toBe(21);
+    expect(filterDefinitions.length).toBe(17);
+    expect(sortDefinitions.length).toBe(14);
   });
 });

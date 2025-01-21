@@ -1,8 +1,9 @@
-import { FieldMetadataEntity } from 'src/engine-metadata/field-metadata/field-metadata.entity';
-import { RelationMetadataEntity } from 'src/engine-metadata/relation-metadata/relation-metadata.entity';
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { IndexMetadataEntity } from 'src/engine/metadata-modules/index-metadata/index-metadata.entity';
+import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 
 import { ComputedPartialFieldMetadata } from './partial-field-metadata.interface';
-import { ComputedPartialObjectMetadata } from './partial-object-metadata.interface';
+import { ComputedPartialWorkspaceEntity } from './partial-object-metadata.interface';
 
 export const enum ComparatorAction {
   SKIP = 'SKIP',
@@ -32,8 +33,16 @@ export interface ComparatorDeleteResult<T> {
 
 export type ObjectComparatorResult =
   | ComparatorSkipResult
-  | ComparatorCreateResult<ComputedPartialObjectMetadata>
-  | ComparatorUpdateResult<Partial<ComputedPartialObjectMetadata>>;
+  | ComparatorCreateResult<
+      Omit<ComputedPartialWorkspaceEntity, 'fields' | 'indexMetadatas'>
+    >
+  | ComparatorUpdateResult<
+      Partial<
+        Omit<ComputedPartialWorkspaceEntity, 'fields' | 'indexMetadatas'>
+      > & {
+        id: string;
+      }
+    >;
 
 export type FieldComparatorResult =
   | ComparatorSkipResult
@@ -47,3 +56,8 @@ export type RelationComparatorResult =
   | ComparatorCreateResult<Partial<RelationMetadataEntity>>
   | ComparatorDeleteResult<RelationMetadataEntity>
   | ComparatorUpdateResult<Partial<RelationMetadataEntity>>;
+
+export type IndexComparatorResult =
+  | ComparatorCreateResult<Partial<IndexMetadataEntity>>
+  | ComparatorUpdateResult<Partial<IndexMetadataEntity>>
+  | ComparatorDeleteResult<IndexMetadataEntity>;

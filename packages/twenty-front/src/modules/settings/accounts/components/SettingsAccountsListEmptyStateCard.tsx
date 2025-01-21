@@ -1,13 +1,18 @@
-import { useCallback } from 'react';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useTriggerApisOAuth } from '@/settings/accounts/hooks/useTriggerApiOAuth';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
 import styled from '@emotion/styled';
-
-import { IconGoogle } from '@/ui/display/icon/components/IconGoogle';
-import { Button } from '@/ui/input/button/components/Button';
-import { Card } from '@/ui/layout/card/components/Card';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
-import { CardHeader } from '@/ui/layout/card/components/CardHeader';
-import { REACT_APP_SERVER_AUTH_URL } from '~/config';
-import { useGenerateTransientTokenMutation } from '~/generated/graphql';
+import { useLingui } from '@lingui/react/macro';
+import { useRecoilValue } from 'recoil';
+import {
+  Button,
+  Card,
+  CardContent,
+  CardHeader,
+  IconGoogle,
+  IconMicrosoft,
+} from 'twenty-ui';
+import { FeatureFlagKey } from '~/generated/graphql';
 
 const StyledHeader = styled(CardHeader)`
   align-items: center;
@@ -18,6 +23,7 @@ const StyledHeader = styled(CardHeader)`
 const StyledBody = styled(CardContent)`
   display: flex;
   justify-content: center;
+  gap: ${({ theme }) => theme.spacing(2)};
 `;
 
 type SettingsAccountsListEmptyStateCardProps = {
@@ -27,29 +33,34 @@ type SettingsAccountsListEmptyStateCardProps = {
 export const SettingsAccountsListEmptyStateCard = ({
   label,
 }: SettingsAccountsListEmptyStateCardProps) => {
-  const [generateTransientToken] = useGenerateTransientTokenMutation();
+  const { triggerApisOAuth } = useTriggerApisOAuth();
+  const currentWorkspace = useRecoilValue(currentWorkspaceState);
+  const isMicrosoftSyncEnabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsMicrosoftSyncEnabled,
+  );
 
-  const handleGmailLogin = useCallback(async () => {
-    const authServerUrl = REACT_APP_SERVER_AUTH_URL;
-
-    const transientToken = await generateTransientToken();
-
-    const token =
-      transientToken.data?.generateTransientToken.transientToken.token;
-
-    window.location.href = `${authServerUrl}/google-gmail?transientToken=${token}`;
-  }, [generateTransientToken]);
+  const { t } = useLingui();
 
   return (
     <Card>
-      <StyledHeader>{label || 'No connected account'}</StyledHeader>
+      <StyledHeader>{label || t`No connected account`}</StyledHeader>
       <StyledBody>
-        <Button
-          Icon={IconGoogle}
-          title="Connect with Google"
-          variant="secondary"
-          onClick={handleGmailLogin}
-        />
+        {currentWorkspace?.isGoogleAuthEnabled && (
+          <Button
+            Icon={IconGoogle}
+            title={t`Connect with Google`}
+            variant="secondary"
+            onClick={() => triggerApisOAuth('google')}
+          />
+        )}
+        {isMicrosoftSyncEnabled && currentWorkspace?.isMicrosoftAuthEnabled && (
+          <Button
+            Icon={IconMicrosoft}
+            title={t`Connect with Microsoft`}
+            variant="secondary"
+            onClick={() => triggerApisOAuth('microsoft')}
+          />
+        )}
       </StyledBody>
     </Card>
   );

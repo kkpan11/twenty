@@ -1,34 +1,28 @@
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { OrderBy } from '@/object-metadata/types/OrderBy';
-import { OrderByField } from '@/object-metadata/types/OrderByField';
+
 import { getLabelIdentifierFieldMetadataItem } from '@/object-metadata/utils/getLabelIdentifierFieldMetadataItem';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { getOrderByForFieldMetadataType } from '@/object-metadata/utils/getOrderByForFieldMetadataType';
+import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { OrderBy } from '@/types/OrderBy';
 import { isDefined } from '~/utils/isDefined';
 
-export const getObjectOrderByField = (
+export const getOrderByFieldForObjectMetadataItem = (
   objectMetadataItem: ObjectMetadataItem,
   orderBy?: OrderBy | null,
-): OrderByField => {
+): RecordGqlOperationOrderBy => {
   const labelIdentifierFieldMetadata =
     getLabelIdentifierFieldMetadataItem(objectMetadataItem);
 
   if (isDefined(labelIdentifierFieldMetadata)) {
-    switch (labelIdentifierFieldMetadata.type) {
-      case FieldMetadataType.FullName:
-        return {
-          [labelIdentifierFieldMetadata.name]: {
-            firstName: orderBy ?? 'AscNullsLast',
-            lastName: orderBy ?? 'AscNullsLast',
-          },
-        };
-      default:
-        return {
-          [labelIdentifierFieldMetadata.name]: orderBy ?? 'AscNullsLast',
-        };
-    }
+    return getOrderByForFieldMetadataType(
+      labelIdentifierFieldMetadata,
+      orderBy,
+    );
   } else {
-    return {
-      createdAt: orderBy ?? 'DescNullsLast',
-    };
+    return [
+      {
+        createdAt: orderBy ?? 'DescNullsLast',
+      },
+    ];
   }
 };

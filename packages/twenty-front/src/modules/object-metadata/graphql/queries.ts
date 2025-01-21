@@ -17,12 +17,39 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
           description
           icon
           isCustom
+          isRemote
           isActive
           isSystem
           createdAt
           updatedAt
           labelIdentifierFieldMetadataId
           imageIdentifierFieldMetadataId
+          shortcut
+          isLabelSyncedWithName
+          indexMetadatas(paging: { first: 100 }) {
+            edges {
+              node {
+                id
+                createdAt
+                updatedAt
+                name
+                indexWhereClause
+                indexType
+                isUnique
+                indexFieldMetadatas(paging: { first: 100 }) {
+                  edges {
+                    node {
+                      id
+                      createdAt
+                      updatedAt
+                      order
+                      fieldMetadataId
+                    }
+                  }
+                }
+              }
+            }
+          }
           fields(paging: { first: 1000 }, filter: $fieldFilter) {
             edges {
               node {
@@ -36,34 +63,35 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
                 isActive
                 isSystem
                 isNullable
+                isUnique
                 createdAt
                 updatedAt
-                fromRelationMetadata {
-                  id
-                  relationType
-                  toObjectMetadata {
-                    id
-                    dataSourceId
-                    nameSingular
-                    namePlural
-                    isSystem
-                  }
-                  toFieldMetadataId
-                }
-                toRelationMetadata {
-                  id
-                  relationType
-                  fromObjectMetadata {
-                    id
-                    dataSourceId
-                    nameSingular
-                    namePlural
-                    isSystem
-                  }
-                  fromFieldMetadataId
-                }
                 defaultValue
                 options
+                settings
+                isLabelSyncedWithName
+                relationDefinition {
+                  relationId
+                  direction
+                  sourceObjectMetadata {
+                    id
+                    nameSingular
+                    namePlural
+                  }
+                  sourceFieldMetadata {
+                    id
+                    name
+                  }
+                  targetObjectMetadata {
+                    id
+                    nameSingular
+                    namePlural
+                  }
+                  targetFieldMetadata {
+                    id
+                    name
+                  }
+                }
               }
             }
             pageInfo {

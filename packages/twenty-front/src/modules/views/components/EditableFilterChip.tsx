@@ -1,10 +1,11 @@
+import { useIcons } from 'twenty-ui';
+
 import { getOperandLabelShort } from '@/object-record/object-filter-dropdown/utils/getOperandLabel';
-import { useIcons } from '@/ui/display/icon/hooks/useIcons';
+import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
 import { SortOrFilterChip } from '@/views/components/SortOrFilterChip';
-import { ViewFilter } from '@/views/types/ViewFilter';
 
 type EditableFilterChipProps = {
-  viewFilter: ViewFilter;
+  viewFilter: RecordFilter;
   onRemove: () => void;
 };
 
@@ -15,12 +16,10 @@ export const EditableFilterChip = ({
   const { getIcon } = useIcons();
   return (
     <SortOrFilterChip
-      key={viewFilter.fieldMetadataId}
-      testId={viewFilter.fieldMetadataId}
-      labelKey={viewFilter.definition.label}
-      labelValue={`${getOperandLabelShort(viewFilter.operand)} ${
-        viewFilter.displayValue
-      }`}
+      key={viewFilter.id}
+      testId={viewFilter.id}
+      labelKey={`${viewFilter.definition.label}${getOperandLabelShort(viewFilter.operand)}`}
+      labelValue={viewFilter.displayValue}
       Icon={getIcon(viewFilter.definition.iconName)}
       onRemove={onRemove}
     />

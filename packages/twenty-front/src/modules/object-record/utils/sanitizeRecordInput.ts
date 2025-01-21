@@ -1,18 +1,18 @@
 import { isString } from '@sniptt/guards';
 
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { isFieldRelationValue } from '@/object-record/record-field/types/guards/isFieldRelationValue';
-import { sanitizeLink } from '@/object-record/utils/sanitizeLinkRecordInput';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { RelationDefinitionType } from '~/generated-metadata/graphql';
 import { FieldMetadataType } from '~/generated/graphql';
 import { isDefined } from '~/utils/isDefined';
+import { getUrlHostName } from '~/utils/url/getUrlHostName';
 
 export const sanitizeRecordInput = ({
   objectMetadataItem,
   recordInput,
 }: {
   objectMetadataItem: ObjectMetadataItem;
-  recordInput: Record<string, unknown>;
+  recordInput: Partial<ObjectRecord>;
 }) => {
   const filteredResultRecord = Object.fromEntries(
     Object.entries(recordInput)
@@ -23,9 +23,14 @@ export const sanitizeRecordInput = ({
 
         if (!fieldMetadataItem) return undefined;
 
+        if (!fieldMetadataItem.isNullable && fieldValue == null) {
+          return undefined;
+        }
+
         if (
           fieldMetadataItem.type === FieldMetadataType.Relation &&
-          isFieldRelationValue(fieldValue)
+          fieldMetadataItem.relationDefinition?.direction ===
+            RelationDefinitionType.ManyToOne
         ) {
           const relationIdFieldName = `${fieldMetadataItem.name}Id`;
           const relationIdFieldMetadataItem = objectMetadataItem.fields.find(
@@ -37,18 +42,29 @@ export const sanitizeRecordInput = ({
             : undefined;
         }
 
+        if (
+          fieldMetadataItem.type === FieldMetadataType.Relation &&
+          fieldMetadataItem.relationDefinition?.direction ===
+            RelationDefinitionType.OneToMany
+        ) {
+          return undefined;
+        }
+
+        // Todo: we should check that the fieldValue is a valid value
+        // (e.g. a string for a string field, following the right composite structure for composite fields)
         return [fieldName, fieldValue];
       })
       .filter(isDefined),
   );
   if (
-    objectMetadataItem.nameSingular !== CoreObjectNameSingular.Company ||
-    !isString(filteredResultRecord.domainName)
+    !(
+      isDefined(filteredResultRecord.domainName) &&
+      isString(filteredResultRecord.domainName)
+    )
   )
     return filteredResultRecord;
-
   return {
     ...filteredResultRecord,
-    domainName: sanitizeLink(filteredResultRecord.domainName),
+    domainName: getUrlHostName(filteredResultRecord.domainName as string),
   };
 };

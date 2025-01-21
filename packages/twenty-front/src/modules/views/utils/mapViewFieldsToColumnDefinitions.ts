@@ -47,7 +47,14 @@ export const mapViewFieldsToColumnDefinitions = ({
         isLabelIdentifier,
         isVisible: isLabelIdentifier || viewField.isVisible,
         viewFieldId: viewField.id,
-      };
+        isSortable: correspondingColumnDefinition.isSortable,
+        isFilterable: correspondingColumnDefinition.isFilterable,
+        defaultValue: correspondingColumnDefinition.defaultValue,
+        settings:
+          'settings' in correspondingColumnDefinition.metadata
+            ? correspondingColumnDefinition.metadata.settings
+            : undefined,
+      } as ColumnDefinition<FieldMetadata>;
     })
     .filter(isDefined);
 

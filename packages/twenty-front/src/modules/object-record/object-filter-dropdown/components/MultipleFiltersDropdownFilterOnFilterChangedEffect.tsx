@@ -11,11 +11,12 @@ export const MultipleFiltersDropdownFilterOnFilterChangedEffect = ({
 
   useEffect(() => {
     switch (filterDefinitionUsedInDropdownType) {
+      case 'DATE':
       case 'DATE_TIME':
         setDropdownWidth(280);
         break;
       default:
-        setDropdownWidth(160);
+        setDropdownWidth(200);
     }
   }, [filterDefinitionUsedInDropdownType, setDropdownWidth]);
 

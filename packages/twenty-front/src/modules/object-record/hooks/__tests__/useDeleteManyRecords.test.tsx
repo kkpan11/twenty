@@ -1,7 +1,4 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
-import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
+import { renderHook } from '@testing-library/react';
 
 import {
   query,
@@ -9,8 +6,11 @@ import {
   variables,
 } from '@/object-record/hooks/__mocks__/useDeleteManyRecords';
 import { useDeleteManyRecords } from '@/object-record/hooks/useDeleteManyRecords';
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { act } from 'react';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 
-const people = [
+const personIds = [
   'a7286b9a-c039-4a89-9567-2dfa7953cda9',
   '37faabcd-cb39-4a0a-8618-7e3fda9afca0',
 ];
@@ -23,21 +23,26 @@ const mocks = [
     },
     result: jest.fn(() => ({
       data: {
-        deletePeople: responseData,
+        deletePeople: [responseData],
       },
     })),
   },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
-);
+jest.mock('@/object-record/hooks/useRefetchAggregateQueries');
+const mockRefetchAggregateQueries = jest.fn();
+(useRefetchAggregateQueries as jest.Mock).mockReturnValue({
+  refetchAggregateQueries: mockRefetchAggregateQueries,
+});
+
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useDeleteManyRecords', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   it('works as expected', async () => {
     const { result } = renderHook(
       () => useDeleteManyRecords({ objectNameSingular: 'person' }),
@@ -47,11 +52,12 @@ describe('useDeleteManyRecords', () => {
     );
 
     await act(async () => {
-      const res = await result.current.deleteManyRecords(people);
+      const res = await result.current.deleteManyRecords(personIds);
       expect(res).toBeDefined();
-      expect(res).toHaveProperty('id');
+      expect(res[0]).toHaveProperty('id');
     });
 
     expect(mocks[0].result).toHaveBeenCalled();
+    expect(mockRefetchAggregateQueries).toHaveBeenCalledTimes(1);
   });
 });

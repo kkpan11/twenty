@@ -5,10 +5,14 @@ export const UPDATE_WORKSPACE = gql`
     updateWorkspace(data: $input) {
       id
       domainName
+      subdomain
       displayName
       logo
       allowImpersonation
-      subscriptionStatus
+      isPublicInviteLinkEnabled
+      isGoogleAuthEnabled
+      isMicrosoftAuthEnabled
+      isPasswordAuthEnabled
     }
   }
 `;

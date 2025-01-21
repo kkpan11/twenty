@@ -1,9 +1,21 @@
+import { useTextFieldDisplay } from '@/object-record/record-field/meta-types/hooks/useTextFieldDisplay';
+import { isFieldText } from '@/object-record/record-field/types/guards/isFieldText';
 import { TextDisplay } from '@/ui/field/display/components/TextDisplay';
 
-import { useTextField } from '../../hooks/useTextField';
-
 export const TextFieldDisplay = () => {
-  const { fieldValue, maxWidth } = useTextField();
+  const { fieldValue, fieldDefinition, displayedMaxRows } =
+    useTextFieldDisplay();
 
-  return <TextDisplay text={fieldValue} maxWidth={maxWidth} />;
+  const displayedMaxRowsFromSettings = isFieldText(fieldDefinition)
+    ? fieldDefinition.metadata?.settings?.displayedMaxRows
+    : undefined;
+
+  return (
+    <TextDisplay
+      text={fieldValue}
+      displayedMaxRows={
+        displayedMaxRows ? displayedMaxRows : displayedMaxRowsFromSettings
+      }
+    />
+  );
 };

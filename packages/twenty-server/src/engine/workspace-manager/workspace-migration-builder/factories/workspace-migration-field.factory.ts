@@ -1,20 +1,22 @@
 import { Injectable } from '@nestjs/common';
 
+import diff from 'microdiff';
+import { FieldMetadataType } from 'twenty-shared';
+
 import { WorkspaceMigrationBuilderAction } from 'src/engine/workspace-manager/workspace-migration-builder/interfaces/workspace-migration-builder-action.interface';
 
+import { FieldMetadataEntity } from 'src/engine/metadata-modules/field-metadata/field-metadata.entity';
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { generateMigrationName } from 'src/engine/metadata-modules/workspace-migration/utils/generate-migration-name.util';
 import {
-  FieldMetadataEntity,
-  FieldMetadataType,
-} from 'src/engine-metadata/field-metadata/field-metadata.entity';
-import { ObjectMetadataEntity } from 'src/engine-metadata/object-metadata/object-metadata.entity';
-import {
+  WorkspaceMigrationColumnAction,
   WorkspaceMigrationColumnActionType,
   WorkspaceMigrationEntity,
   WorkspaceMigrationTableAction,
-} from 'src/engine-metadata/workspace-migration/workspace-migration.entity';
-import { computeObjectTargetTable } from 'src/engine-workspace/utils/compute-object-target-table.util';
-import { WorkspaceMigrationFactory } from 'src/engine-metadata/workspace-migration/workspace-migration.factory';
-import { generateMigrationName } from 'src/engine-metadata/workspace-migration/utils/generate-migration-name.util';
+  WorkspaceMigrationTableActionType,
+} from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
+import { WorkspaceMigrationFactory } from 'src/engine/metadata-modules/workspace-migration/workspace-migration.factory';
+import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
 
 export interface FieldMetadataUpdate {
   current: FieldMetadataEntity;
@@ -59,17 +61,17 @@ export class WorkspaceMigrationFieldFactory {
 
     switch (action) {
       case WorkspaceMigrationBuilderAction.CREATE:
-        return this.createFieldMigration(
+        return await this.createFieldMigration(
           originalObjectMetadataMap,
           fieldMetadataCollectionOrFieldMetadataUpdateCollection as FieldMetadataEntity[],
         );
       case WorkspaceMigrationBuilderAction.UPDATE:
-        return this.updateFieldMigration(
+        return await this.updateFieldMigration(
           originalObjectMetadataMap,
           fieldMetadataCollectionOrFieldMetadataUpdateCollection as FieldMetadataUpdate[],
         );
       case WorkspaceMigrationBuilderAction.DELETE:
-        return this.deleteFieldMigration(
+        return await this.deleteFieldMigration(
           originalObjectMetadataMap,
           fieldMetadataCollectionOrFieldMetadataUpdateCollection as FieldMetadataEntity[],
         );
@@ -84,29 +86,57 @@ export class WorkspaceMigrationFieldFactory {
   ): Promise<Partial<WorkspaceMigrationEntity>[]> {
     const workspaceMigrations: Partial<WorkspaceMigrationEntity>[] = [];
 
-    for (const fieldMetadata of fieldMetadataCollection) {
-      if (fieldMetadata.type === FieldMetadataType.RELATION) {
-        continue;
-      }
+    const fieldMetadataCollectionGroupByObjectMetadataId =
+      fieldMetadataCollection.reduce(
+        (result, currentFieldMetadata) => {
+          result[currentFieldMetadata.objectMetadataId] = [
+            ...(result[currentFieldMetadata.objectMetadataId] || []),
+            currentFieldMetadata,
+          ];
 
-      const migrations: WorkspaceMigrationTableAction[] = [
-        {
-          name: computeObjectTargetTable(
-            originalObjectMetadataMap[fieldMetadata.objectMetadataId],
-          ),
-          action: 'alter',
-          columns: this.workspaceMigrationFactory.createColumnActions(
+          return result;
+        },
+        {} as Record<string, FieldMetadataEntity[]>,
+      );
+
+    for (const objectMetadataId in fieldMetadataCollectionGroupByObjectMetadataId) {
+      const fieldMetadataCollection =
+        fieldMetadataCollectionGroupByObjectMetadataId[objectMetadataId];
+
+      const columns: WorkspaceMigrationColumnAction[] = [];
+
+      const objectMetadata =
+        originalObjectMetadataMap[fieldMetadataCollection[0]?.objectMetadataId];
+
+      for (const fieldMetadata of fieldMetadataCollection) {
+        // Relations are handled in workspace-migration-relation.factory.ts
+        if (fieldMetadata.type === FieldMetadataType.RELATION) {
+          continue;
+        }
+
+        columns.push(
+          ...this.workspaceMigrationFactory.createColumnActions(
             WorkspaceMigrationColumnActionType.CREATE,
             fieldMetadata,
           ),
-        },
-      ];
+        );
+      }
 
       workspaceMigrations.push({
-        workspaceId: fieldMetadata.workspaceId,
-        name: generateMigrationName(`create-${fieldMetadata.name}`),
+        workspaceId: objectMetadata.workspaceId,
+        name: generateMigrationName(
+          `create-${objectMetadata.nameSingular}-fields`,
+        ),
         isCustom: false,
-        migrations,
+        migrations: [
+          {
+            name: computeObjectTargetTable(
+              originalObjectMetadataMap[objectMetadataId],
+            ),
+            action: WorkspaceMigrationTableActionType.ALTER,
+            columns,
+          },
+        ],
       });
     }
 
@@ -125,30 +155,66 @@ export class WorkspaceMigrationFieldFactory {
         continue;
       }
 
-      const migrations: WorkspaceMigrationTableAction[] = [
-        {
-          name: computeObjectTargetTable(
-            originalObjectMetadataMap[
-              fieldMetadataUpdate.current.objectMetadataId
-            ],
-          ),
-          action: 'alter',
-          columns: this.workspaceMigrationFactory.createColumnActions(
-            WorkspaceMigrationColumnActionType.ALTER,
-            fieldMetadataUpdate.current,
-            fieldMetadataUpdate.altered,
-          ),
-        },
-      ];
+      const columnActions = this.workspaceMigrationFactory.createColumnActions(
+        WorkspaceMigrationColumnActionType.ALTER,
+        fieldMetadataUpdate.current,
+        fieldMetadataUpdate.altered,
+      );
 
-      workspaceMigrations.push({
-        workspaceId: fieldMetadataUpdate.current.workspaceId,
-        name: generateMigrationName(
-          `update-${fieldMetadataUpdate.altered.name}`,
-        ),
-        isCustom: false,
-        migrations,
-      });
+      const isMigrationNeeded = columnActions.reduce(
+        (result, currentColumnAction) => {
+          if (
+            currentColumnAction.action ===
+              WorkspaceMigrationColumnActionType.CREATE ||
+            currentColumnAction.action ===
+              WorkspaceMigrationColumnActionType.DROP
+          ) {
+            return true;
+          }
+
+          if (
+            currentColumnAction.action ===
+            WorkspaceMigrationColumnActionType.ALTER
+          ) {
+            return (
+              diff(
+                currentColumnAction.currentColumnDefinition,
+                currentColumnAction.alteredColumnDefinition,
+              ).length > 0
+            );
+          }
+
+          return result;
+        },
+        false,
+      );
+
+      if (isMigrationNeeded) {
+        const migrations: WorkspaceMigrationTableAction[] = [
+          {
+            name: computeObjectTargetTable(
+              originalObjectMetadataMap[
+                fieldMetadataUpdate.current.objectMetadataId
+              ],
+            ),
+            action: WorkspaceMigrationTableActionType.ALTER,
+            columns: this.workspaceMigrationFactory.createColumnActions(
+              WorkspaceMigrationColumnActionType.ALTER,
+              fieldMetadataUpdate.current,
+              fieldMetadataUpdate.altered,
+            ),
+          },
+        ];
+
+        workspaceMigrations.push({
+          workspaceId: fieldMetadataUpdate.current.workspaceId,
+          name: generateMigrationName(
+            `update-${fieldMetadataUpdate.altered.name}`,
+          ),
+          isCustom: false,
+          migrations,
+        });
+      }
     }
 
     return workspaceMigrations;
@@ -171,7 +237,7 @@ export class WorkspaceMigrationFieldFactory {
           name: computeObjectTargetTable(
             originalObjectMetadataMap[fieldMetadata.objectMetadataId],
           ),
-          action: 'alter',
+          action: WorkspaceMigrationTableActionType.ALTER,
           columns: [
             {
               action: WorkspaceMigrationColumnActionType.DROP,

@@ -1,23 +1,26 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Logger } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 
 import { render } from '@react-email/render';
-import { In } from 'typeorm';
 import {
   CleanInactiveWorkspaceEmail,
   DeleteInactiveWorkspaceEmail,
 } from 'twenty-emails';
+import { In, Repository } from 'typeorm';
 
-import { MessageQueueJob } from 'src/integrations/message-queue/interfaces/message-queue-job.interface';
-
-import { ObjectMetadataService } from 'src/engine-metadata/object-metadata/object-metadata.service';
-import { DataSourceService } from 'src/engine-metadata/data-source/data-source.service';
 import { TypeORMService } from 'src/database/typeorm/typeorm.service';
-import { DataSourceEntity } from 'src/engine-metadata/data-source/data-source.entity';
-import { UserService } from 'src/engine/modules/user/services/user.service';
-import { EmailService } from 'src/integrations/email/email.service';
-import { EnvironmentService } from 'src/integrations/environment/environment.service';
-import { ObjectMetadataEntity } from 'src/engine-metadata/object-metadata/object-metadata.entity';
-import { computeObjectTargetTable } from 'src/engine-workspace/utils/compute-object-target-table.util';
+import { EmailService } from 'src/engine/core-modules/email/email.service';
+import { EnvironmentService } from 'src/engine/core-modules/environment/environment.service';
+import { Process } from 'src/engine/core-modules/message-queue/decorators/process.decorator';
+import { Processor } from 'src/engine/core-modules/message-queue/decorators/processor.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { UserService } from 'src/engine/core-modules/user/services/user.service';
+import { Workspace } from 'src/engine/core-modules/workspace/workspace.entity';
+import { DataSourceEntity } from 'src/engine/metadata-modules/data-source/data-source.entity';
+import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
+import { ObjectMetadataService } from 'src/engine/metadata-modules/object-metadata/object-metadata.service';
+import { computeObjectTargetTable } from 'src/engine/utils/compute-object-target-table.util';
 import { CleanInactiveWorkspacesCommandOptions } from 'src/engine/workspace-manager/workspace-cleaner/commands/clean-inactive-workspaces.command';
 import { getDryRunLogHeader } from 'src/utils/get-dry-run-log-header';
 
@@ -28,15 +31,15 @@ type WorkspaceToDeleteData = {
   daysSinceInactive: number;
 };
 
-@Injectable()
-export class CleanInactiveWorkspaceJob
-  implements MessageQueueJob<CleanInactiveWorkspacesCommandOptions>
-{
+@Processor(MessageQueue.cronQueue)
+export class CleanInactiveWorkspaceJob {
   private readonly logger = new Logger(CleanInactiveWorkspaceJob.name);
   private readonly inactiveDaysBeforeDelete;
   private readonly inactiveDaysBeforeEmail;
 
   constructor(
+    @InjectRepository(Workspace, 'core')
+    private readonly workspaceRepository: Repository<Workspace>,
     private readonly dataSourceService: DataSourceService,
     private readonly objectMetadataService: ObjectMetadataService,
     private readonly typeORMService: TypeORMService,
@@ -73,7 +76,7 @@ export class CleanInactiveWorkspaceJob
         await workspaceDataSource?.query(
           `SELECT MAX("updatedAt") FROM ${dataSource.schema}."${tableName}"`,
         )
-      )[0].max;
+      )?.[0]?.max;
 
       if (mostRecentTableUpdatedAt) {
         const mostRecentTableUpdatedAtDate = new Date(mostRecentTableUpdatedAt);
@@ -95,8 +98,20 @@ export class CleanInactiveWorkspaceJob
     daysSinceInactive: number,
     isDryRun: boolean,
   ) {
+    const workspace = await this.workspaceRepository.findOne({
+      where: { id: dataSource.workspaceId },
+    });
+
+    if (!workspace) {
+      this.logger.error(
+        `Workspace with id ${dataSource.workspaceId} not found in database`,
+      );
+
+      return;
+    }
+
     const workspaceMembers =
-      await this.userService.loadWorkspaceMembers(dataSource);
+      await this.userService.loadWorkspaceMembers(workspace);
 
     const workspaceDataSource =
       await this.typeORMService.connectToDataSource(dataSource);
@@ -111,7 +126,7 @@ export class CleanInactiveWorkspaceJob
       `${getDryRunLogHeader(isDryRun)}Sending workspace ${
         dataSource.workspaceId
       } inactive since ${daysSinceInactive} days emails to users ['${workspaceMembers
-        .map((workspaceUser) => workspaceUser.email)
+        .map((workspaceUser) => workspaceUser.userEmail)
         .join(', ')}']`,
     );
 
@@ -122,7 +137,7 @@ export class CleanInactiveWorkspaceJob
     workspaceMembers.forEach((workspaceMember) => {
       const emailData = {
         daysLeft: this.inactiveDaysBeforeDelete - daysSinceInactive,
-        userName: `${workspaceMember.nameFirstName} ${workspaceMember.nameLastName}`,
+        userName: `${workspaceMember.name.firstName} ${workspaceMember.name.lastName}`,
         workspaceDisplayName: `${displayName}`,
       };
       const emailTemplate = CleanInactiveWorkspaceEmail(emailData);
@@ -134,7 +149,7 @@ export class CleanInactiveWorkspaceJob
       });
 
       this.emailService.send({
-        to: workspaceMember.email,
+        to: workspaceMember.userEmail,
         bcc: this.environmentService.get('EMAIL_SYSTEM_ADDRESS'),
         from: `${this.environmentService.get(
           'EMAIL_FROM_NAME',
@@ -193,6 +208,7 @@ export class CleanInactiveWorkspaceJob
     });
   }
 
+  @Process(CleanInactiveWorkspaceJob.name)
   async handle(data: CleanInactiveWorkspacesCommandOptions): Promise<void> {
     const isDryRun = data.dryRun || false;
 

@@ -3,10 +3,21 @@
 import styled from '@emotion/styled';
 import Link from 'next/link';
 
+import MotionContainer from '@/app/_components/ui/layout/LoaderAnimation';
+
 export interface User {
   id: string;
   avatarUrl: string;
 }
+
+const StyledImg = styled.img`
+  width: 100%; // Adjust width as needed
+  height: 100%; // Adjust height as needed
+  object-fit: cover; // Keeps the aspect ratio and covers the area
+  position: absolute; // Similar to layout="fill" in Next Image
+  top: 0;
+  left: 0;
+`;
 
 const AvatarGridContainer = styled.div`
   margin: 0 auto;
@@ -26,17 +37,12 @@ const AvatarItem = styled.div`
   border-radius: 16px;
   overflow: hidden;
   transition: 200ms;
+  background-color: white;
 
   &:hover {
     -webkit-box-shadow: -6px 6px 0px 1px rgba(0, 0, 0, 1);
     -moz-box-shadow: -6px 6px 0px 1px rgba(0, 0, 0, 1);
     box-shadow: -6px 6px 0px 1px rgba(0, 0, 0, 1);
-  }
-
-  img {
-    width: 100%;
-    height: auto;
-    display: block;
   }
 
   .username {
@@ -52,6 +58,8 @@ const AvatarItem = styled.div`
     transition:
       opacity 0.3s ease,
       visibility 0.3s;
+    border-bottom-left-radius: 8px;
+    border-bottom-right-radius: 8px;
   }
 
   &:hover .username {
@@ -64,16 +72,22 @@ import React from 'react';
 
 const AvatarGrid = ({ users }: { users: User[] }) => {
   return (
-    <AvatarGridContainer>
-      {users.map((user) => (
-        <Link href={`/contributors/${user.id}`} key={`l_${user.id}`}>
-          <AvatarItem key={user.id}>
-            <img src={user.avatarUrl} alt={user.id} />
-            <span className="username">{user.id}</span>
-          </AvatarItem>
-        </Link>
-      ))}
-    </AvatarGridContainer>
+    <MotionContainer>
+      <AvatarGridContainer>
+        {users.map((user) => (
+          <Link
+            href={`/contributors/${user.id}`}
+            key={`l_${user.id}`}
+            prefetch={false}
+          >
+            <AvatarItem key={user.id}>
+              <StyledImg src={user.avatarUrl} alt={user.id} />
+              <span className="username">{user.id}</span>
+            </AvatarItem>
+          </Link>
+        ))}
+      </AvatarGridContainer>
+    </MotionContainer>
   );
 };
 

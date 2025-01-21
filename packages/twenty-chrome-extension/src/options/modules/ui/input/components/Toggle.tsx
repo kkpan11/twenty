@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react';
 import styled from '@emotion/styled';
 import { motion } from 'framer-motion';
 
+import { isDefined } from '~/utils/isDefined';
+
 export type ToggleSize = 'small' | 'medium';
 
 type ContainerProps = {
@@ -13,7 +15,7 @@ type ContainerProps = {
 const StyledContainer = styled.div<ContainerProps>`
   align-items: center;
   background-color: ${({ theme, isOn, color }) =>
-    isOn ? color ?? theme.color.blue : theme.background.quaternary};
+    isOn ? (color ?? theme.color.blue) : theme.background.quaternary};
   border-radius: 10px;
   cursor: pointer;
   display: flex;
@@ -54,7 +56,7 @@ export const Toggle = ({
   const handleChange = () => {
     setIsOn(!isOn);
 
-    if (onChange) {
+    if (isDefined(onChange)) {
       onChange(!isOn);
     }
   };

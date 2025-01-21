@@ -1,3 +1,4 @@
+import { FieldMetadataType } from 'twenty-shared';
 import { computeInputFields } from '../../utils/computeInputFields';
 import { InputField } from '../../utils/data.types';
 
@@ -11,7 +12,7 @@ describe('computeInputFields', () => {
         edges: [
           {
             node: {
-              type: 'RELATION',
+              type: FieldMetadataType.RELATION,
               name: 'favorites',
               label: 'Favorites',
               description: 'Favorites linked to the contact',
@@ -21,7 +22,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'CURRENCY',
+              type: FieldMetadataType.CURRENCY,
               name: 'annualSalary',
               label: 'Annual Salary',
               description: 'Annual Salary of the Person',
@@ -31,7 +32,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'TEXT',
+              type: FieldMetadataType.TEXT,
               name: 'jobTitle',
               label: 'Job Title',
               description: 'Contact’s job title',
@@ -43,7 +44,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'DATE_TIME',
+              type: FieldMetadataType.DATE_TIME,
               name: 'updatedAt',
               label: 'Update date',
               description: null,
@@ -55,7 +56,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'FULL_NAME',
+              type: FieldMetadataType.FULL_NAME,
               name: 'name',
               label: 'Name',
               description: 'Contact’s name',
@@ -68,7 +69,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'UUID',
+              type: FieldMetadataType.UUID,
               name: 'id',
               label: 'Id',
               description: null,
@@ -81,7 +82,7 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'NUMBER',
+              type: FieldMetadataType.NUMBER,
               name: 'recordPosition',
               label: 'RecordPosition',
               description: 'Record Position',
@@ -91,29 +92,17 @@ describe('computeInputFields', () => {
           },
           {
             node: {
-              type: 'LINK',
-              name: 'xLink',
-              label: 'X',
-              description: 'Contact’s X/Twitter account',
+              type: FieldMetadataType.LINKS,
+              name: 'whatsapp',
+              label: 'Whatsapp',
+              description: 'Contact’s Whatsapp account',
               isNullable: true,
               defaultValue: null,
             },
           },
           {
             node: {
-              type: 'EMAIL',
-              name: 'email',
-              label: 'Email',
-              description: 'Contact’s Email',
-              isNullable: false,
-              defaultValue: {
-                value: '',
-              },
-            },
-          },
-          {
-            node: {
-              type: 'UUID',
+              type: FieldMetadataType.UUID,
               name: 'companyId',
               label: 'Company id (foreign key)',
               description: 'Contact’s company id foreign key',
@@ -132,6 +121,8 @@ describe('computeInputFields', () => {
         helpText:
           'Annual Salary of the Person: Amount Micros. eg: set 3210000 for 3.21$',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'annualSalary__currencyCode',
@@ -140,6 +131,8 @@ describe('computeInputFields', () => {
         helpText:
           'Annual Salary of the Person: Currency Code. eg: USD, EUR, etc...',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'jobTitle',
@@ -147,6 +140,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s job title',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'updatedAt',
@@ -154,6 +149,8 @@ describe('computeInputFields', () => {
         type: 'datetime',
         helpText: null,
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'name__firstName',
@@ -161,6 +158,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s name: First Name',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'name__lastName',
@@ -168,6 +167,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s name: Last Name',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'recordPosition',
@@ -175,6 +176,8 @@ describe('computeInputFields', () => {
         type: 'integer',
         helpText: 'Record Position',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'xLink__url',
@@ -182,6 +185,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s X/Twitter account: Link Url',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'xLink__label',
@@ -189,6 +194,35 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s X/Twitter account: Link Label',
         required: false,
+        list: false,
+        placeholder: undefined,
+      },
+      {
+        key: 'whatsapp__primaryLinkLabel',
+        label: 'Whatsapp: Primary Link Label',
+        type: 'string',
+        helpText: 'Contact’s Whatsapp account: Primary Link Label',
+        required: false,
+        list: false,
+        placeholder: undefined,
+      },
+      {
+        key: 'whatsapp__primaryLinkUrl',
+        label: 'Whatsapp: Primary Link Url',
+        type: 'string',
+        helpText: 'Contact’s Whatsapp account: Primary Link Url',
+        required: false,
+        list: false,
+        placeholder: undefined,
+      },
+      {
+        key: 'whatsapp__secondaryLinks',
+        label: 'Whatsapp: Secondary Links',
+        type: 'string',
+        helpText: 'Contact’s Whatsapp account: Secondary Links',
+        required: false,
+        list: true,
+        placeholder: '{ url: "", label: "" }',
       },
       {
         key: 'email',
@@ -196,6 +230,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s Email',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
       {
         key: 'companyId',
@@ -203,6 +239,8 @@ describe('computeInputFields', () => {
         type: 'string',
         helpText: 'Contact’s company id foreign key',
         required: false,
+        list: false,
+        placeholder: undefined,
       },
     ];
     const idInputField: InputField = {
@@ -210,6 +248,8 @@ describe('computeInputFields', () => {
       label: 'Id',
       type: 'string',
       helpText: null,
+      list: false,
+      placeholder: undefined,
       required: false,
     };
     const expectedResult = [idInputField].concat(baseExpectedResult);

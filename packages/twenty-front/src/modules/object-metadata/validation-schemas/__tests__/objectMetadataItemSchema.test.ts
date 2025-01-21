@@ -1,23 +1,18 @@
-import { SafeParseSuccess } from 'zod';
-
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { mockedCompanyObjectMetadataItem } from '@/object-record/record-field/__mocks__/fieldDefinitions';
-
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { objectMetadataItemSchema } from '../objectMetadataItemSchema';
 
 describe('objectMetadataItemSchema', () => {
   it('validates a valid object metadata item', () => {
     // Given
-    const validObjectMetadataItem = mockedCompanyObjectMetadataItem;
+    const validObjectMetadataItem = generatedMockObjectMetadataItems.find(
+      (item) => item.nameSingular === 'company',
+    );
 
     // When
-    const result = objectMetadataItemSchema.safeParse(validObjectMetadataItem);
+    const result = objectMetadataItemSchema.parse(validObjectMetadataItem);
 
     // Then
-    expect(result.success).toBe(true);
-    expect((result as SafeParseSuccess<ObjectMetadataItem>).data).toEqual(
-      validObjectMetadataItem,
-    );
+    expect(result).toEqual(validObjectMetadataItem);
   });
 
   it('fails for an invalid object metadata item', () => {
@@ -35,6 +30,7 @@ describe('objectMetadataItemSchema', () => {
       namePlural: 'notCamelCase',
       nameSingular: 'notCamelCase',
       updatedAt: 'invalid date',
+      isLabelSyncedWithName: 'not a boolean',
     };
 
     // When

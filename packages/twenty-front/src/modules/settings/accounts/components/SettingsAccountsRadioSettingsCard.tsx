@@ -1,15 +1,14 @@
-import { ReactNode } from 'react';
 import styled from '@emotion/styled';
+import { ReactNode } from 'react';
 
-import { Radio } from '@/ui/input/components/Radio';
-import { Card } from '@/ui/layout/card/components/Card';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
+import { Card, CardContent, Radio } from 'twenty-ui';
 
 type SettingsAccountsRadioSettingsCardProps<Option extends { value: string }> =
   {
     onChange: (nextValue: Option['value']) => void;
     options: Option[];
     value: Option['value'];
+    name: string;
   };
 
 const StyledCardContent = styled(CardContent)`
@@ -49,8 +48,9 @@ export const SettingsAccountsRadioSettingsCard = <
   onChange,
   options,
   value,
+  name,
 }: SettingsAccountsRadioSettingsCardProps<Option>) => (
-  <Card>
+  <Card rounded>
     {options.map((option, index) => (
       <StyledCardContent
         key={option.value}
@@ -63,6 +63,7 @@ export const SettingsAccountsRadioSettingsCard = <
           <StyledDescription>{option.description}</StyledDescription>
         </div>
         <StyledRadio
+          name={name}
           value={option.value}
           onCheckedChange={() => onChange(option.value)}
           checked={value === option.value}
