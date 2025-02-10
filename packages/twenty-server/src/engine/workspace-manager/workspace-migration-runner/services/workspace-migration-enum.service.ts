@@ -1,9 +1,19 @@
 import { Injectable } from '@nestjs/common';
 
-import { QueryRunner } from 'typeorm';
+import { isDefined } from 'class-validator';
+import { QueryRunner, TableColumn } from 'typeorm';
+import { v4 } from 'uuid';
 
-import { WorkspaceMigrationColumnAlter } from 'src/engine-metadata/workspace-migration/workspace-migration.entity';
-import { serializeDefaultValue } from 'src/engine-metadata/field-metadata/utils/serialize-default-value';
+import { serializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/serialize-default-value';
+import { unserializeDefaultValue } from 'src/engine/metadata-modules/field-metadata/utils/unserialize-default-value';
+import {
+  WorkspaceMigrationColumnAlter,
+  WorkspaceMigrationRenamedEnum,
+} from 'src/engine/metadata-modules/workspace-migration/workspace-migration.entity';
+import {
+  WorkspaceMigrationException,
+  WorkspaceMigrationExceptionCode,
+} from 'src/engine/metadata-modules/workspace-migration/workspace-migration.exception';
 
 @Injectable()
 export class WorkspaceMigrationEnumService {
@@ -13,9 +23,30 @@ export class WorkspaceMigrationEnumService {
     tableName: string,
     migrationColumn: WorkspaceMigrationColumnAlter,
   ) {
+    const oldEnumTypeName = await this.getEnumTypeName(
+      queryRunner,
+      schemaName,
+      tableName,
+      migrationColumn.currentColumnDefinition.columnName,
+    );
+
+    // Rename column name
+    if (
+      migrationColumn.currentColumnDefinition.columnName !==
+      migrationColumn.alteredColumnDefinition.columnName
+    ) {
+      await this.renameColumn(
+        queryRunner,
+        schemaName,
+        tableName,
+        migrationColumn.currentColumnDefinition.columnName,
+        migrationColumn.alteredColumnDefinition.columnName,
+      );
+    }
+
     const columnDefinition = migrationColumn.alteredColumnDefinition;
-    const oldEnumTypeName = `${tableName}_${columnDefinition.columnName}_enum`;
-    const newEnumTypeName = `${tableName}_${columnDefinition.columnName}_enum_new`;
+    const tempEnumTypeName = `${oldEnumTypeName}_temp`;
+    const newEnumTypeName = `${tableName}_${columnDefinition.columnName}_enum`;
     const enumValues =
       columnDefinition.enum?.map((enumValue) => {
         if (typeof enumValue === 'string') {
@@ -24,148 +55,152 @@ export class WorkspaceMigrationEnumService {
 
         return enumValue.to;
       }) ?? [];
-
-    if (!columnDefinition.isNullable && !columnDefinition.defaultValue) {
-      columnDefinition.defaultValue = serializeDefaultValue(enumValues[0]);
-    }
-
-    // Create new enum type with new values
-    await this.createNewEnumType(
-      newEnumTypeName,
-      queryRunner,
-      schemaName,
-      enumValues,
+    const renamedEnumValues = columnDefinition.enum?.filter(
+      (enumValue): enumValue is WorkspaceMigrationRenamedEnum =>
+        typeof enumValue !== 'string',
     );
 
-    // Temporarily change column type to text
-    await queryRunner.query(`
-      ALTER TABLE "${schemaName}"."${tableName}"
-      ALTER COLUMN "${columnDefinition.columnName}" TYPE TEXT
-    `);
+    const oldColumnName = `old_${v4()}`;
 
-    // Migrate existing values to new values
-    await this.migrateEnumValues(
-      queryRunner,
-      schemaName,
-      tableName,
-      migrationColumn,
-    );
-
-    // Update existing rows to handle missing values
-    await this.handleMissingEnumValues(
-      queryRunner,
-      schemaName,
-      tableName,
-      migrationColumn,
-      enumValues,
-    );
-
-    // Alter column type to new enum
-    await this.updateColumnToNewEnum(
+    // Rename old column
+    await this.renameColumn(
       queryRunner,
       schemaName,
       tableName,
       columnDefinition.columnName,
-      newEnumTypeName,
-      columnDefinition.defaultValue,
+      oldColumnName,
     );
-
-    // Drop old enum type
-    await this.dropOldEnumType(queryRunner, schemaName, oldEnumTypeName);
-
-    // Rename new enum type to old enum type name
     await this.renameEnumType(
       queryRunner,
       schemaName,
       oldEnumTypeName,
-      newEnumTypeName,
+      tempEnumTypeName,
     );
+
+    await queryRunner.addColumn(
+      `${schemaName}.${tableName}`,
+      new TableColumn({
+        name: columnDefinition.columnName,
+        type: columnDefinition.columnType,
+        default: columnDefinition.defaultValue,
+        enum: enumValues,
+        enumName: newEnumTypeName,
+        isArray: columnDefinition.isArray,
+        isNullable: columnDefinition.isNullable,
+        isUnique: columnDefinition.isUnique,
+      }),
+    );
+
+    await this.migrateEnumValues(
+      queryRunner,
+      schemaName,
+      migrationColumn,
+      tableName,
+      oldColumnName,
+      enumValues,
+      renamedEnumValues,
+    );
+
+    // Drop old column
+    await queryRunner.query(`
+      ALTER TABLE "${schemaName}"."${tableName}"
+      DROP COLUMN "${oldColumnName}"
+    `);
+    // Drop temp enum type
+    await this.dropOldEnumType(queryRunner, schemaName, tempEnumTypeName);
   }
 
-  private async createNewEnumType(
-    name: string,
+  private async renameColumn(
     queryRunner: QueryRunner,
     schemaName: string,
-    newValues: string[],
+    tableName: string,
+    oldColumnName: string,
+    newColumnName: string,
   ) {
-    const enumValues = newValues
-      .map((value) => `'${value.replace(/'/g, "''")}'`)
-      .join(', ');
+    await queryRunner.query(`
+      ALTER TABLE "${schemaName}"."${tableName}"
+      RENAME COLUMN "${oldColumnName}" TO "${newColumnName}"
+    `);
+  }
 
-    await queryRunner.query(
-      `CREATE TYPE "${schemaName}"."${name}" AS ENUM (${enumValues})`,
-    );
+  private migrateEnumValue({
+    value,
+    renamedEnumValues,
+    allEnumValues,
+    defaultValueFallback,
+  }: {
+    value: string;
+    renamedEnumValues?: WorkspaceMigrationRenamedEnum[];
+    allEnumValues?: string[];
+    defaultValueFallback?: string;
+  }) {
+    if (renamedEnumValues?.find((enumVal) => enumVal?.from === value)?.to) {
+      return renamedEnumValues?.find((enumVal) => enumVal?.from === value)?.to;
+    }
+
+    if (allEnumValues?.includes(value)) {
+      return value;
+    }
+
+    if (isDefined(defaultValueFallback)) {
+      return defaultValueFallback;
+    }
+
+    return null;
   }
 
   private async migrateEnumValues(
     queryRunner: QueryRunner,
     schemaName: string,
-    tableName: string,
     migrationColumn: WorkspaceMigrationColumnAlter,
+    tableName: string,
+    oldColumnName: string,
+    enumValues: string[],
+    renamedEnumValues?: WorkspaceMigrationRenamedEnum[],
   ) {
     const columnDefinition = migrationColumn.alteredColumnDefinition;
 
-    if (!columnDefinition.enum) {
-      return;
-    }
+    const values = await queryRunner.query(
+      `SELECT id, "${oldColumnName}" FROM "${schemaName}"."${tableName}"`,
+    );
 
-    for (const enumValue of columnDefinition.enum) {
-      // Skip string values
-      if (typeof enumValue === 'string') {
-        continue;
+    for (const value of values) {
+      let val = value[oldColumnName];
+
+      if (/^\{.*\}$/.test(val)) {
+        val = serializeDefaultValue(
+          val
+            .slice(1, -1)
+            .split(',')
+            .map((v: string) => v.trim())
+            .map((v: string) =>
+              this.migrateEnumValue({
+                value: v,
+                renamedEnumValues: renamedEnumValues,
+                allEnumValues: enumValues,
+              }),
+            )
+            .filter((v: string | null) => isDefined(v)),
+        );
+      } else if (typeof val === 'string') {
+        const migratedValue = this.migrateEnumValue({
+          value: val,
+          renamedEnumValues: renamedEnumValues,
+          allEnumValues: enumValues,
+          defaultValueFallback: columnDefinition.isNullable
+            ? null
+            : unserializeDefaultValue(columnDefinition.defaultValue),
+        });
+
+        val = isDefined(migratedValue) ? `'${migratedValue}'` : null;
       }
+
       await queryRunner.query(`
         UPDATE "${schemaName}"."${tableName}"
-        SET "${columnDefinition.columnName}" = '${enumValue.to}'
-        WHERE "${columnDefinition.columnName}" = '${enumValue.from}'
+        SET "${columnDefinition.columnName}" = ${val}
+        WHERE id='${value.id}'
       `);
     }
-  }
-
-  private async handleMissingEnumValues(
-    queryRunner: QueryRunner,
-    schemaName: string,
-    tableName: string,
-    migrationColumn: WorkspaceMigrationColumnAlter,
-    enumValues: string[],
-  ) {
-    const columnDefinition = migrationColumn.alteredColumnDefinition;
-
-    // Set missing values to null or default value
-    let defaultValue = 'NULL';
-
-    if (columnDefinition.defaultValue) {
-      if (Array.isArray(columnDefinition.defaultValue)) {
-        defaultValue = `ARRAY[${columnDefinition.defaultValue
-          .map((e) => `'${e}'`)
-          .join(', ')}]`;
-      } else {
-        defaultValue = columnDefinition.defaultValue;
-      }
-    }
-
-    await queryRunner.query(`
-      UPDATE "${schemaName}"."${tableName}"
-      SET "${columnDefinition.columnName}" = ${defaultValue}
-      WHERE "${columnDefinition.columnName}" NOT IN (${enumValues
-        .map((e) => `'${e}'`)
-        .join(', ')})
-    `);
-  }
-
-  private async updateColumnToNewEnum(
-    queryRunner: QueryRunner,
-    schemaName: string,
-    tableName: string,
-    columnName: string,
-    newEnumTypeName: string,
-    newDefaultValue: string,
-  ) {
-    await queryRunner.query(
-      `ALTER TABLE "${schemaName}"."${tableName}" ALTER COLUMN "${columnName}" DROP DEFAULT,
-      ALTER COLUMN "${columnName}" TYPE "${schemaName}"."${newEnumTypeName}" USING ("${columnName}"::text::"${schemaName}"."${newEnumTypeName}"),
-      ALTER COLUMN "${columnName}" SET DEFAULT ${newDefaultValue}`,
-    );
   }
 
   private async dropOldEnumType(
@@ -185,8 +220,34 @@ export class WorkspaceMigrationEnumService {
     newEnumTypeName: string,
   ) {
     await queryRunner.query(`
-      ALTER TYPE "${schemaName}"."${newEnumTypeName}"
-      RENAME TO "${oldEnumTypeName}"
+      ALTER TYPE "${schemaName}"."${oldEnumTypeName}"
+      RENAME TO "${newEnumTypeName}"
     `);
+  }
+
+  private async getEnumTypeName(
+    queryRunner: QueryRunner,
+    schemaName: string,
+    tableName: string,
+    columnName: string,
+  ): Promise<string> {
+    const [result] = await queryRunner.query(
+      `SELECT udt_name, data_type FROM information_schema.columns WHERE table_schema = $1 AND table_name = $2 AND column_name = $3`,
+      [schemaName, tableName, columnName],
+    );
+
+    if (!result) {
+      throw new WorkspaceMigrationException(
+        `Enum type name not found for column ${columnName} in table ${tableName} while trying to alter enum`,
+        WorkspaceMigrationExceptionCode.ENUM_TYPE_NAME_NOT_FOUND,
+      );
+    }
+
+    const enumTypeName =
+      result.data_type === 'ARRAY'
+        ? result.udt_name.replace(/^_/, '')
+        : result.udt_name;
+
+    return enumTypeName;
   }
 }

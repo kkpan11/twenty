@@ -1,55 +1,64 @@
+import { Theme, withTheme } from '@emotion/react';
+import { styled } from '@linaria/react';
 import { Ref } from 'react';
-import styled from '@emotion/styled';
+
+const StyledOuterContainer = styled.div<{
+  hasSoftFocus?: boolean;
+}>`
+  align-items: center;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  padding-left: 8px;
+  width: 100%;
+`;
+
+const StyledInnerContainer = styled.div`
+  align-items: center;
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+  width: 100%;
+  white-space: nowrap;
+`;
+
+const StyledEmptyPlaceholderField = withTheme(styled.div<{ theme: Theme }>`
+  color: ${({ theme }) => theme.font.color.light};
+  padding-left: 4px;
+`);
 
 export type EditableCellDisplayContainerProps = {
   softFocus?: boolean;
   onClick?: () => void;
   scrollRef?: Ref<HTMLDivElement>;
   isHovered?: boolean;
+  onContextMenu?: (event: React.MouseEvent<HTMLDivElement, MouseEvent>) => void;
+  placeholderForEmptyCell?: string;
 };
-
-const StyledEditableCellDisplayModeOuterContainer = styled.div<
-  Pick<EditableCellDisplayContainerProps, 'softFocus' | 'isHovered'>
->`
-  align-items: center;
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-  padding-left: ${({ theme }) => theme.spacing(2)};
-  padding-right: ${({ theme }) => theme.spacing(1)};
-  width: 100%;
-  ${(props) =>
-    props.softFocus
-      ? `background: ${props.theme.background.transparent.secondary};
-      border-radius: ${props.theme.border.radius.sm};
-      outline: 1px solid ${props.theme.font.color.extraLight};`
-      : ''}
-`;
-
-const StyledEditableCellDisplayModeInnerContainer = styled.div`
-  align-items: center;
-  display: flex;
-  height: 100%;
-  overflow: hidden;
-  width: 100%;
-`;
 
 export const RecordTableCellDisplayContainer = ({
   children,
   softFocus,
   onClick,
   scrollRef,
+  onContextMenu,
+  placeholderForEmptyCell,
 }: React.PropsWithChildren<EditableCellDisplayContainerProps>) => (
-  <StyledEditableCellDisplayModeOuterContainer
+  <StyledOuterContainer
     data-testid={
       softFocus ? 'editable-cell-soft-focus-mode' : 'editable-cell-display-mode'
     }
     onClick={onClick}
-    softFocus={softFocus}
     ref={scrollRef}
+    hasSoftFocus={softFocus}
+    onContextMenu={onContextMenu}
   >
-    <StyledEditableCellDisplayModeInnerContainer>
-      {children}
-    </StyledEditableCellDisplayModeInnerContainer>
-  </StyledEditableCellDisplayModeOuterContainer>
+    {placeholderForEmptyCell ? (
+      <StyledEmptyPlaceholderField>
+        {'Set ' + placeholderForEmptyCell}
+      </StyledEmptyPlaceholderField>
+    ) : (
+      <StyledInnerContainer>{children}</StyledInnerContainer>
+    )}
+  </StyledOuterContainer>
 );

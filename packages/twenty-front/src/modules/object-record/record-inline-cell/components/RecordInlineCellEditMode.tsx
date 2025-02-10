@@ -1,25 +1,19 @@
+import { RecordInlineCellContext } from '@/object-record/record-inline-cell/components/RecordInlineCellContext';
+import { OverlayContainer } from '@/ui/layout/overlay/components/OverlayContainer';
 import styled from '@emotion/styled';
+import { autoUpdate, flip, offset, useFloating } from '@floating-ui/react';
+import { useContext } from 'react';
+import { createPortal } from 'react-dom';
 
-const StyledInlineCellEditModeContainer = styled.div<RecordInlineCellEditModeProps>`
+const StyledInlineCellEditModeContainer = styled.div`
   align-items: center;
 
   display: flex;
+  width: 100%;
+  position: absolute;
   height: 24px;
 
-  margin-left: -${({ theme }) => theme.spacing(1)};
-  position: relative;
-  z-index: 10;
-`;
-
-const StyledInlineCellInput = styled.div`
-  align-items: center;
-  display: flex;
-
-  min-height: 32px;
-  min-width: 200px;
-  width: inherit;
-
-  z-index: 10;
+  background: transparent;
 `;
 
 type RecordInlineCellEditModeProps = {
@@ -28,8 +22,43 @@ type RecordInlineCellEditModeProps = {
 
 export const RecordInlineCellEditMode = ({
   children,
-}: RecordInlineCellEditModeProps) => (
-  <StyledInlineCellEditModeContainer data-testid="inline-cell-edit-mode-container">
-    <StyledInlineCellInput>{children}</StyledInlineCellInput>
-  </StyledInlineCellEditModeContainer>
-);
+}: RecordInlineCellEditModeProps) => {
+  const { isCentered } = useContext(RecordInlineCellContext);
+
+  const { refs, floatingStyles } = useFloating({
+    placement: isCentered ? 'bottom' : 'bottom-start',
+    middleware: [
+      flip(),
+      offset(
+        isCentered
+          ? {
+              mainAxis: -26,
+              crossAxis: 0,
+            }
+          : {
+              mainAxis: -29,
+              crossAxis: -5,
+            },
+      ),
+    ],
+    whileElementsMounted: autoUpdate,
+  });
+
+  return (
+    <StyledInlineCellEditModeContainer
+      ref={refs.setReference}
+      data-testid="inline-cell-edit-mode-container"
+    >
+      {createPortal(
+        <OverlayContainer
+          ref={refs.setFloating}
+          style={floatingStyles}
+          borderRadius="sm"
+        >
+          {children}
+        </OverlayContainer>,
+        document.body,
+      )}
+    </StyledInlineCellEditModeContainer>
+  );
+};

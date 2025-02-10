@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import { Gabarito, Inter } from 'next/font/google';
+import { PublicEnvScript } from 'next-runtime-env';
 
 import { AppHeader } from '@/app/_components/ui/layout/header';
 
@@ -7,6 +8,8 @@ import { FooterDesktop } from './_components/ui/layout/FooterDesktop';
 import EmotionRootStyleRegistry from './emotion-root-style-registry';
 
 import './layout.css';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Twenty.com',
@@ -38,6 +41,7 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${gabarito.variable} ${inter.variable}`}>
       <body>
+        <PublicEnvScript />
         <EmotionRootStyleRegistry>
           <AppHeader />
           <div className="container">{children}</div>

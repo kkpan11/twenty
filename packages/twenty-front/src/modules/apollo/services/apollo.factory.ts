@@ -6,28 +6,31 @@ import {
   ServerError,
   ServerParseError,
 } from '@apollo/client';
-import { GraphQLErrors } from '@apollo/client/errors';
 import { setContext } from '@apollo/client/link/context';
 import { onError } from '@apollo/client/link/error';
 import { RetryLink } from '@apollo/client/link/retry';
 import { createUploadLink } from 'apollo-upload-client';
 
 import { renewToken } from '@/auth/services/AuthService';
+import { CurrentWorkspaceMember } from '@/auth/states/currentWorkspaceMemberState';
+import { isDefined } from 'twenty-shared';
 import { AuthTokenPair } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { logDebug } from '~/utils/logDebug';
 
+import { i18n } from '@lingui/core';
+import { GraphQLFormattedError } from 'graphql';
 import { ApolloManager } from '../types/apolloManager.interface';
-import { loggerLink } from '../utils';
+import { loggerLink } from '../utils/loggerLink';
 
 const logger = loggerLink(() => 'Twenty');
 
 export interface Options<TCacheShape> extends ApolloClientOptions<TCacheShape> {
-  onError?: (err: GraphQLErrors | undefined) => void;
+  onError?: (err: readonly GraphQLFormattedError[] | undefined) => void;
   onNetworkError?: (err: Error | ServerParseError | ServerError) => void;
   onTokenPairChange?: (tokenPair: AuthTokenPair) => void;
   onUnauthenticatedError?: () => void;
   initialTokenPair: AuthTokenPair | null;
+  currentWorkspaceMember: CurrentWorkspaceMember | null;
   extraLinks?: ApolloLink[];
   isDebugMode?: boolean;
 }
@@ -35,6 +38,7 @@ export interface Options<TCacheShape> extends ApolloClientOptions<TCacheShape> {
 export class ApolloFactory<TCacheShape> implements ApolloManager<TCacheShape> {
   private client: ApolloClient<TCacheShape>;
   private tokenPair: AuthTokenPair | null = null;
+  private currentWorkspaceMember: CurrentWorkspaceMember | null = null;
 
   constructor(opts: Options<TCacheShape>) {
     const {
@@ -44,12 +48,14 @@ export class ApolloFactory<TCacheShape> implements ApolloManager<TCacheShape> {
       onTokenPairChange,
       onUnauthenticatedError,
       initialTokenPair,
+      currentWorkspaceMember,
       extraLinks,
       isDebugMode,
       ...options
     } = opts;
 
     this.tokenPair = initialTokenPair;
+    this.currentWorkspaceMember = currentWorkspaceMember;
 
     const buildApolloLink = (): ApolloLink => {
       const httpLink = createUploadLink({
@@ -60,9 +66,13 @@ export class ApolloFactory<TCacheShape> implements ApolloManager<TCacheShape> {
         return {
           headers: {
             ...headers,
+            ...options.headers,
             authorization: this.tokenPair?.accessToken.token
               ? `Bearer ${this.tokenPair?.accessToken.token}`
               : '',
+            ...(this.currentWorkspaceMember?.locale
+              ? { 'x-locale': this.currentWorkspaceMember.locale }
+              : { 'x-locale': i18n.locale }),
           },
         };
       });
@@ -80,7 +90,6 @@ export class ApolloFactory<TCacheShape> implements ApolloManager<TCacheShape> {
         ({ graphQLErrors, networkError, forward, operation }) => {
           if (isDefined(graphQLErrors)) {
             onErrorCb?.(graphQLErrors);
-
             for (const graphQLError of graphQLErrors) {
               if (graphQLError.message === 'Unauthorized') {
                 return fromPromise(
@@ -155,6 +164,10 @@ export class ApolloFactory<TCacheShape> implements ApolloManager<TCacheShape> {
 
   updateTokenPair(tokenPair: AuthTokenPair | null) {
     this.tokenPair = tokenPair;
+  }
+
+  updateWorkspaceMember(workspaceMember: CurrentWorkspaceMember | null) {
+    this.currentWorkspaceMember = workspaceMember;
   }
 
   getClient() {

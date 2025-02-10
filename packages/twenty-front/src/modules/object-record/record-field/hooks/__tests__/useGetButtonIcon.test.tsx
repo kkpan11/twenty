@@ -1,18 +1,18 @@
-import { ReactNode } from 'react';
 import { renderHook } from '@testing-library/react';
+import { ReactNode } from 'react';
 import { RecoilRoot } from 'recoil';
+import { IconPencil } from 'twenty-ui';
 
 import {
-  phoneFieldDefinition,
+  phonesFieldDefinition,
   relationFieldDefinition,
 } from '@/object-record/record-field/__mocks__/fieldDefinitions';
 import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
 import { useGetButtonIcon } from '@/object-record/record-field/hooks/useGetButtonIcon';
 import { FieldDefinition } from '@/object-record/record-field/types/FieldDefinition';
 import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { IconPencil } from '@/ui/display/icon';
 
-const entityId = 'entityId';
+const recordId = 'recordId';
 
 const getWrapper =
   (fieldDefinition: FieldDefinition<FieldMetadata>) =>
@@ -20,7 +20,7 @@ const getWrapper =
     <FieldContext.Provider
       value={{
         fieldDefinition,
-        entityId,
+        recordId,
         hotkeyScope: 'hotkeyScope',
         isLabelIdentifier: false,
       }}
@@ -29,7 +29,7 @@ const getWrapper =
     </FieldContext.Provider>
   );
 
-const PhoneWrapper = getWrapper(phoneFieldDefinition);
+const PhoneWrapper = getWrapper(phonesFieldDefinition);
 const RelationWrapper = getWrapper(relationFieldDefinition);
 
 describe('useGetButtonIcon', () => {

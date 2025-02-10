@@ -1,5 +1,4 @@
-import { useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
+import { useApolloClient, useMutation } from '@apollo/client';
 
 import {
   UpdateOneFieldMetadataItemMutation,
@@ -7,12 +6,36 @@ import {
 } from '~/generated-metadata/graphql';
 
 import { UPDATE_ONE_FIELD_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
 
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItem';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { useFindManyRecordsQuery } from '@/object-record/hooks/useFindManyRecordsQuery';
+import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
+import { useSetRecoilState } from 'recoil';
 import { useApolloMetadataClient } from './useApolloMetadataClient';
 
 export const useUpdateOneFieldMetadataItem = () => {
   const apolloMetadataClient = useApolloMetadataClient();
+  const apolloClient = useApolloClient();
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
+
+  const setCurrentWorkspace = useSetRecoilState(currentWorkspaceState);
+
+  const { findManyRecordsQuery: findManyViewsQuery } = useFindManyRecordsQuery({
+    objectNameSingular: CoreObjectNameSingular.View,
+    recordGqlFields: {
+      id: true,
+      viewGroups: {
+        id: true,
+        fieldMetadataId: true,
+        isVisible: true,
+        fieldValue: true,
+        position: true,
+      },
+    },
+  });
 
   const [mutate] = useMutation<
     UpdateOneFieldMetadataItemMutation,
@@ -22,26 +45,49 @@ export const useUpdateOneFieldMetadataItem = () => {
   });
 
   const updateOneFieldMetadataItem = async ({
+    objectMetadataId,
     fieldMetadataIdToUpdate,
     updatePayload,
   }: {
+    objectMetadataId: string;
     fieldMetadataIdToUpdate: UpdateOneFieldMetadataItemMutationVariables['idToUpdate'];
     updatePayload: Pick<
       UpdateOneFieldMetadataItemMutationVariables['updatePayload'],
-      'description' | 'icon' | 'isActive' | 'label' | 'name'
+      | 'description'
+      | 'icon'
+      | 'isActive'
+      | 'label'
+      | 'name'
+      | 'defaultValue'
+      | 'options'
+      | 'isLabelSyncedWithName'
     >;
   }) => {
-    return await mutate({
+    const result = await mutate({
       variables: {
         idToUpdate: fieldMetadataIdToUpdate,
-        updatePayload: {
-          ...updatePayload,
-          label: updatePayload.label ?? undefined,
+        updatePayload: updatePayload,
+      },
+    });
+
+    await refreshObjectMetadataItems();
+
+    const { data } = await apolloClient.query({ query: GET_CURRENT_USER });
+    setCurrentWorkspace(data?.currentUser?.currentWorkspace);
+
+    await apolloClient.query({
+      query: findManyViewsQuery,
+      variables: {
+        filter: {
+          objectMetadataId: {
+            eq: objectMetadataId,
+          },
         },
       },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
+      fetchPolicy: 'network-only',
     });
+
+    return result;
   };
 
   return {

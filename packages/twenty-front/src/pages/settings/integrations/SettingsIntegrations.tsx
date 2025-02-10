@@ -1,18 +1,30 @@
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings } from '@/ui/display/icon';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { SETTINGS_INTEGRATION_CATEGORIES } from '~/pages/settings/integrations/constants/SettingsIntegrationCategories';
-import { SettingsIntegrationGroup } from '~/pages/settings/integrations/SettingsIntegrationGroup';
+import { SettingsIntegrationGroup } from '@/settings/integrations/components/SettingsIntegrationGroup';
+import { useSettingsIntegrationCategories } from '@/settings/integrations/hooks/useSettingsIntegrationCategories';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { Trans, useLingui } from '@lingui/react/macro';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsIntegrations = () => {
+  const { t } = useLingui();
+  const integrationCategories = useSettingsIntegrationCategories();
+
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+    <SubMenuTopBarContainer
+      title={t`Integrations`}
+      links={[
+        {
+          children: <Trans>Workspace</Trans>,
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: <Trans>Integrations</Trans> },
+      ]}
+    >
       <SettingsPageContainer>
-        <Breadcrumb links={[{ children: 'Integrations' }]} />
-        {SETTINGS_INTEGRATION_CATEGORIES.map((group) => {
-          return <SettingsIntegrationGroup integrationGroup={group} />;
-        })}
+        {integrationCategories.map((group) => (
+          <SettingsIntegrationGroup key={group.key} integrationGroup={group} />
+        ))}
       </SettingsPageContainer>
     </SubMenuTopBarContainer>
   );

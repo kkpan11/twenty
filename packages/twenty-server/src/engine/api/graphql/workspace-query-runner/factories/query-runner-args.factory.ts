@@ -1,0 +1,346 @@
+import { Injectable } from '@nestjs/common';
+
+import { ServerBlockNoteEditor } from '@blocknote/server-util';
+import { FieldMetadataType } from 'twenty-shared';
+
+import {
+  ObjectRecord,
+  ObjectRecordFilter,
+} from 'src/engine/api/graphql/workspace-query-builder/interfaces/object-record.interface';
+import { WorkspaceQueryRunnerOptions } from 'src/engine/api/graphql/workspace-query-runner/interfaces/query-runner-option.interface';
+import {
+  CreateManyResolverArgs,
+  CreateOneResolverArgs,
+  FindDuplicatesResolverArgs,
+  FindManyResolverArgs,
+  FindOneResolverArgs,
+  ResolverArgs,
+  ResolverArgsType,
+  UpdateManyResolverArgs,
+  UpdateOneResolverArgs,
+} from 'src/engine/api/graphql/workspace-resolver-builder/interfaces/workspace-resolvers-builder.interface';
+import { FieldMetadataInterface } from 'src/engine/metadata-modules/field-metadata/interfaces/field-metadata.interface';
+
+import {
+  RichTextV2Metadata,
+  richTextV2ValueSchema,
+} from 'src/engine/metadata-modules/field-metadata/composite-types/rich-text-v2.composite-type';
+import { FieldMetadataMap } from 'src/engine/metadata-modules/types/field-metadata-map';
+
+import { RecordPositionFactory } from './record-position.factory';
+
+type ArgPositionBackfillInput = {
+  argIndex?: number;
+  shouldBackfillPosition: boolean;
+};
+
+@Injectable()
+export class QueryRunnerArgsFactory {
+  constructor(private readonly recordPositionFactory: RecordPositionFactory) {}
+
+  async create(
+    args: ResolverArgs,
+    options: WorkspaceQueryRunnerOptions,
+    resolverArgsType: ResolverArgsType,
+  ) {
+    const fieldMetadataMapByNameByName =
+      options.objectMetadataItemWithFieldMaps.fieldsByName;
+
+    const shouldBackfillPosition =
+      options.objectMetadataItemWithFieldMaps.fields.some(
+        (field) =>
+          field.type === FieldMetadataType.POSITION &&
+          field.name === 'position',
+      );
+
+    switch (resolverArgsType) {
+      case ResolverArgsType.CreateOne:
+        return {
+          ...args,
+          data: await this.overrideDataByFieldMetadata(
+            (args as CreateOneResolverArgs).data,
+            options,
+            fieldMetadataMapByNameByName,
+            {
+              argIndex: 0,
+              shouldBackfillPosition,
+            },
+          ),
+        } satisfies CreateOneResolverArgs;
+      case ResolverArgsType.CreateMany:
+        return {
+          ...args,
+          data: await Promise.all(
+            (args as CreateManyResolverArgs).data?.map((arg, index) =>
+              this.overrideDataByFieldMetadata(
+                arg,
+                options,
+                fieldMetadataMapByNameByName,
+                {
+                  argIndex: index,
+                  shouldBackfillPosition,
+                },
+              ),
+            ) ?? [],
+          ),
+        } satisfies CreateManyResolverArgs;
+      case ResolverArgsType.UpdateOne:
+        return {
+          ...args,
+          id: (args as UpdateOneResolverArgs).id,
+          data: await this.overrideDataByFieldMetadata(
+            (args as UpdateOneResolverArgs).data,
+            options,
+            fieldMetadataMapByNameByName,
+            {
+              argIndex: 0,
+              shouldBackfillPosition: false,
+            },
+          ),
+        } satisfies UpdateOneResolverArgs;
+      case ResolverArgsType.UpdateMany:
+        return {
+          ...args,
+          filter: await this.overrideFilterByFieldMetadata(
+            (args as UpdateManyResolverArgs).filter,
+            fieldMetadataMapByNameByName,
+          ),
+          data: await Promise.all(
+            (args as UpdateManyResolverArgs).data?.map((arg, index) =>
+              this.overrideDataByFieldMetadata(
+                arg,
+                options,
+                fieldMetadataMapByNameByName,
+                {
+                  argIndex: index,
+                  shouldBackfillPosition: false,
+                },
+              ),
+            ) ?? [],
+          ),
+        } satisfies UpdateManyResolverArgs;
+      case ResolverArgsType.FindOne:
+        return {
+          ...args,
+          filter: await this.overrideFilterByFieldMetadata(
+            (args as FindOneResolverArgs).filter,
+            fieldMetadataMapByNameByName,
+          ),
+        };
+      case ResolverArgsType.FindMany:
+        return {
+          ...args,
+          filter: await this.overrideFilterByFieldMetadata(
+            (args as FindManyResolverArgs).filter,
+            fieldMetadataMapByNameByName,
+          ),
+        };
+
+      case ResolverArgsType.FindDuplicates:
+        return {
+          ...args,
+          ids: (await Promise.all(
+            (args as FindDuplicatesResolverArgs).ids?.map((id) =>
+              this.overrideValueByFieldMetadata(
+                'id',
+                id,
+                fieldMetadataMapByNameByName,
+              ),
+            ) ?? [],
+          )) as string[],
+          data: await Promise.all(
+            (args as FindDuplicatesResolverArgs).data?.map((arg, index) =>
+              this.overrideDataByFieldMetadata(
+                arg,
+                options,
+                fieldMetadataMapByNameByName,
+                {
+                  argIndex: index,
+                  shouldBackfillPosition,
+                },
+              ),
+            ) ?? [],
+          ),
+        } satisfies FindDuplicatesResolverArgs;
+      default:
+        return args;
+    }
+  }
+
+  private async overrideDataByFieldMetadata(
+    data: Partial<ObjectRecord> | undefined,
+    options: WorkspaceQueryRunnerOptions,
+    fieldMetadataMapByNameByName: Record<string, FieldMetadataInterface>,
+    argPositionBackfillInput: ArgPositionBackfillInput,
+  ): Promise<Partial<ObjectRecord>> {
+    if (!data) {
+      return Promise.resolve({});
+    }
+
+    let isFieldPositionPresent = false;
+
+    const createArgByArgKeyPromises: Promise<[string, any]>[] = Object.entries(
+      data,
+    ).map(async ([key, value]): Promise<[string, any]> => {
+      const fieldMetadata = fieldMetadataMapByNameByName[key];
+
+      if (!fieldMetadata) {
+        return [key, value];
+      }
+
+      switch (fieldMetadata.type) {
+        case FieldMetadataType.POSITION: {
+          isFieldPositionPresent = true;
+
+          const newValue = await this.recordPositionFactory.create(
+            value,
+            {
+              isCustom: options.objectMetadataItemWithFieldMaps.isCustom,
+              nameSingular:
+                options.objectMetadataItemWithFieldMaps.nameSingular,
+            },
+            options.authContext.workspace.id,
+            argPositionBackfillInput.argIndex,
+          );
+
+          return [key, newValue];
+        }
+        case FieldMetadataType.NUMBER:
+          return [key, Number(value)] as const;
+        case FieldMetadataType.RICH_TEXT_V2: {
+          const richTextV2Value = richTextV2ValueSchema.parse(value);
+
+          const serverBlockNoteEditor = ServerBlockNoteEditor.create();
+
+          const convertedMarkdown = richTextV2Value.blocknote
+            ? await serverBlockNoteEditor.blocksToMarkdownLossy(
+                JSON.parse(richTextV2Value.blocknote),
+              )
+            : null;
+
+          const convertedBlocknote = richTextV2Value.markdown
+            ? JSON.stringify(
+                await serverBlockNoteEditor.tryParseMarkdownToBlocks(
+                  richTextV2Value.markdown,
+                ),
+              )
+            : null;
+
+          const valueInBothFormats: RichTextV2Metadata = {
+            markdown: richTextV2Value.markdown || convertedMarkdown,
+            blocknote: richTextV2Value.blocknote || convertedBlocknote,
+          };
+
+          return [key, valueInBothFormats];
+        }
+        default:
+          return [key, value];
+      }
+    });
+
+    const newArgEntries = await Promise.all(createArgByArgKeyPromises);
+
+    if (
+      !isFieldPositionPresent &&
+      argPositionBackfillInput.shouldBackfillPosition
+    ) {
+      return Object.fromEntries([
+        ...newArgEntries,
+        [
+          'position',
+          await this.recordPositionFactory.create(
+            'first',
+            {
+              isCustom: options.objectMetadataItemWithFieldMaps.isCustom,
+              nameSingular:
+                options.objectMetadataItemWithFieldMaps.nameSingular,
+            },
+            options.authContext.workspace.id,
+            argPositionBackfillInput.argIndex,
+          ),
+        ],
+      ]);
+    }
+
+    return Object.fromEntries(newArgEntries);
+  }
+
+  private overrideFilterByFieldMetadata(
+    filter: ObjectRecordFilter | undefined,
+    fieldMetadataMapByName: Record<string, FieldMetadataInterface>,
+  ) {
+    if (!filter) {
+      return;
+    }
+
+    const overrideFilter = (filterObject: ObjectRecordFilter) => {
+      return Object.entries(filterObject).reduce((acc, [key, value]) => {
+        if (key === 'and' || key === 'or') {
+          acc[key] = value.map((nestedFilter: ObjectRecordFilter) =>
+            overrideFilter(nestedFilter),
+          );
+        } else if (key === 'not') {
+          acc[key] = overrideFilter(value);
+        } else {
+          acc[key] = this.transformValueByType(
+            key,
+            value,
+            fieldMetadataMapByName,
+          );
+        }
+
+        return acc;
+      }, {});
+    };
+
+    return overrideFilter(filter);
+  }
+
+  private transformValueByType(
+    key: string,
+    value: any,
+    fieldMetadataMapByName: FieldMetadataMap,
+  ) {
+    const fieldMetadata = fieldMetadataMapByName[key];
+
+    if (!fieldMetadata) {
+      return value;
+    }
+
+    switch (fieldMetadata.type) {
+      case 'NUMBER': {
+        if (value?.is === 'NULL') {
+          return value;
+        } else {
+          return Object.fromEntries(
+            Object.entries(value).map(([filterKey, filterValue]) => [
+              filterKey,
+              Number(filterValue),
+            ]),
+          );
+        }
+      }
+      default:
+        return value;
+    }
+  }
+
+  private async overrideValueByFieldMetadata(
+    key: string,
+    value: any,
+    fieldMetadataMapByName: FieldMetadataMap,
+  ) {
+    const fieldMetadata = fieldMetadataMapByName[key];
+
+    if (!fieldMetadata) {
+      return value;
+    }
+
+    switch (fieldMetadata.type) {
+      case FieldMetadataType.NUMBER:
+        return Number(value);
+      default:
+        return value;
+    }
+  }
+}

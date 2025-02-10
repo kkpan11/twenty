@@ -1,7 +1,7 @@
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { ObjectFilterDropdownScope } from '@/object-record/object-filter-dropdown/scopes/ObjectFilterDropdownScope';
 import { HotkeyScope } from '@/ui/utilities/hotkey/types/HotkeyScope';
 
+import { ObjectFilterDropdownComponentInstanceContext } from '@/object-record/object-filter-dropdown/states/contexts/ObjectFilterDropdownComponentInstanceContext';
+import { useFilterableFieldMetadataItemsInRecordIndexContext } from '@/object-record/record-filter/hooks/useFilterableFieldMetadataItemsInRecordIndexContext';
 import { MultipleFiltersDropdownButton } from './MultipleFiltersDropdownButton';
 import { SingleEntityObjectFilterDropdownButton } from './SingleEntityObjectFilterDropdownButton';
 
@@ -14,24 +14,26 @@ export const ObjectFilterDropdownButton = ({
   filterDropdownId,
   hotkeyScope,
 }: ObjectFilterDropdownButtonProps) => {
-  const { availableFilterDefinitions } = useFilterDropdown({
-    filterDropdownId: filterDropdownId,
-  });
-  const hasOnlyOneEntityFilter =
-    availableFilterDefinitions.length === 1 &&
-    availableFilterDefinitions[0].type === 'RELATION';
+  const { filterableFieldMetadataItems } =
+    useFilterableFieldMetadataItemsInRecordIndexContext();
 
-  if (!availableFilterDefinitions.length) {
+  const hasOnlyOneEntityFilter =
+    filterableFieldMetadataItems.length === 1 &&
+    filterableFieldMetadataItems[0].type === 'RELATION';
+
+  if (!filterableFieldMetadataItems.length) {
     return <></>;
   }
 
   return (
-    <ObjectFilterDropdownScope filterScopeId={filterDropdownId}>
+    <ObjectFilterDropdownComponentInstanceContext.Provider
+      value={{ instanceId: filterDropdownId }}
+    >
       {hasOnlyOneEntityFilter ? (
         <SingleEntityObjectFilterDropdownButton hotkeyScope={hotkeyScope} />
       ) : (
         <MultipleFiltersDropdownButton hotkeyScope={hotkeyScope} />
       )}
-    </ObjectFilterDropdownScope>
+    </ObjectFilterDropdownComponentInstanceContext.Provider>
   );
 };

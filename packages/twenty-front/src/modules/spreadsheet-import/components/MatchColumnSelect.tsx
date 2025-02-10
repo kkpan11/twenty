@@ -1,5 +1,3 @@
-import React, { useCallback, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
@@ -9,17 +7,18 @@ import {
   size,
   useFloating,
 } from '@floating-ui/react';
-import debounce from 'lodash.debounce';
+import React, { useCallback, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
+import { AppTooltip, MenuItem, MenuItemSelect } from 'twenty-ui';
 import { ReadonlyDeep } from 'type-fest';
+import { useDebouncedCallback } from 'use-debounce';
 
 import { SelectOption } from '@/spreadsheet-import/types';
-import { AppTooltip } from '@/ui/display/tooltip/AppTooltip';
 import { DropdownMenu } from '@/ui/layout/dropdown/components/DropdownMenu';
 import { DropdownMenuItemsContainer } from '@/ui/layout/dropdown/components/DropdownMenuItemsContainer';
 import { DropdownMenuSearchInput } from '@/ui/layout/dropdown/components/DropdownMenuSearchInput';
 import { DropdownMenuSeparator } from '@/ui/layout/dropdown/components/DropdownMenuSeparator';
-import { MenuItem } from '@/ui/navigation/menu-item/components/MenuItem';
-import { MenuItemSelect } from '@/ui/navigation/menu-item/components/MenuItemSelect';
+import { OverlayContainer } from '@/ui/layout/overlay/components/OverlayContainer';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
 import { useUpdateEffect } from '~/hooks/useUpdateEffect';
 
@@ -66,15 +65,21 @@ export const MatchColumnSelect = ({
   const handleSearchFilterChange = useCallback(
     (text: string) => {
       setOptions(
-        initialOptions.filter((option) => option.label.includes(text)),
+        initialOptions.filter((option) =>
+          option.label.toLowerCase().includes(text.toLowerCase()),
+        ),
       );
     },
     [initialOptions],
   );
 
-  const debouncedHandleSearchFilter = debounce(handleSearchFilterChange, 100, {
-    leading: true,
-  });
+  const debouncedHandleSearchFilter = useDebouncedCallback(
+    handleSearchFilterChange,
+    100,
+    {
+      leading: true,
+    },
+  );
 
   const handleFilterChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const value = event.currentTarget.value;
@@ -97,6 +102,7 @@ export const MatchColumnSelect = ({
     callback: () => {
       setIsOpen(false);
     },
+    listenerId: 'match-column-select',
   });
 
   useUpdateEffect(() => {
@@ -116,48 +122,50 @@ export const MatchColumnSelect = ({
       {isOpen &&
         createPortal(
           <StyledFloatingDropdown ref={refs.setFloating} style={floatingStyles}>
-            <DropdownMenu
-              data-select-disable
-              ref={dropdownContainerRef}
-              width={refs.domReference.current?.clientWidth}
-            >
-              <DropdownMenuSearchInput
-                value={searchFilter}
-                onChange={handleFilterChange}
-                autoFocus
-              />
-              <DropdownMenuSeparator />
-              <DropdownMenuItemsContainer hasMaxHeight>
-                {options?.map((option) => (
-                  <React.Fragment key={option.label}>
-                    <MenuItemSelect
-                      selected={value?.label === option.label}
-                      onClick={() => handleChange(option)}
-                      disabled={
-                        option.disabled && value?.value !== option.value
-                      }
-                      LeftIcon={option?.icon}
-                      text={option.label}
-                    />
-                    {option.disabled &&
-                      value?.value !== option.value &&
-                      createPortal(
-                        <AppTooltip
-                          key={option.value}
-                          anchorSelect={`#${option.value}`}
-                          content="You are already importing this column."
-                          place="right"
-                          offset={-20}
-                        />,
-                        document.body,
-                      )}
-                  </React.Fragment>
-                ))}
-                {options?.length === 0 && (
-                  <MenuItem key="No result" text="No result" />
-                )}
-              </DropdownMenuItemsContainer>
-            </DropdownMenu>
+            <OverlayContainer>
+              <DropdownMenu
+                data-select-disable
+                ref={dropdownContainerRef}
+                // width={refs.domReference.current?.clientWidth}
+              >
+                <DropdownMenuSearchInput
+                  value={searchFilter}
+                  onChange={handleFilterChange}
+                  autoFocus
+                />
+                <DropdownMenuSeparator />
+                <DropdownMenuItemsContainer hasMaxHeight>
+                  {options?.map((option) => (
+                    <React.Fragment key={option.label}>
+                      <MenuItemSelect
+                        selected={value?.label === option.label}
+                        onClick={() => handleChange(option)}
+                        disabled={
+                          option.disabled && value?.value !== option.value
+                        }
+                        LeftIcon={option?.icon}
+                        text={option.label}
+                      />
+                      {option.disabled &&
+                        value?.value !== option.value &&
+                        createPortal(
+                          <AppTooltip
+                            key={option.value}
+                            anchorSelect={`#${option.value}`}
+                            content="You are already importing this column."
+                            place="right"
+                            offset={-20}
+                          />,
+                          document.body,
+                        )}
+                    </React.Fragment>
+                  ))}
+                  {options?.length === 0 && (
+                    <MenuItem key="No results" text="No results" />
+                  )}
+                </DropdownMenuItemsContainer>
+              </DropdownMenu>
+            </OverlayContainer>
           </StyledFloatingDropdown>,
           document.body,
         )}

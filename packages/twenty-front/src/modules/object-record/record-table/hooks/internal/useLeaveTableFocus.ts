@@ -1,44 +1,47 @@
 import { useRecoilCallback } from 'recoil';
 
-import { useRecordTableStates } from '@/object-record/record-table/hooks/internal/useRecordTableStates';
-import { currentHotkeyScopeState } from '@/ui/utilities/hotkey/states/internal/currentHotkeyScopeState';
 import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
 
-import { TableHotkeyScope } from '../../types/TableHotkeyScope';
-
-import { useCloseCurrentTableCellInEditMode } from './useCloseCurrentTableCellInEditMode';
+import { useResetTableRowSelection } from '@/object-record/record-table/hooks/internal/useResetTableRowSelection';
+import { RecordTableComponentInstanceContext } from '@/object-record/record-table/states/context/RecordTableComponentInstanceContext';
+import { isSoftFocusActiveComponentState } from '@/object-record/record-table/states/isSoftFocusActiveComponentState';
+import { useAvailableComponentInstanceIdOrThrow } from '@/ui/utilities/state/component-state/hooks/useAvailableComponentInstanceIdOrThrow';
+import { useRecoilComponentCallbackStateV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentCallbackStateV2';
 import { useDisableSoftFocus } from './useDisableSoftFocus';
 
 export const useLeaveTableFocus = (recordTableId?: string) => {
-  const disableSoftFocus = useDisableSoftFocus(recordTableId);
-  const closeCurrentCellInEditMode =
-    useCloseCurrentTableCellInEditMode(recordTableId);
+  const recordTableIdFromContext = useAvailableComponentInstanceIdOrThrow(
+    RecordTableComponentInstanceContext,
+    recordTableId,
+  );
 
-  const { getIsSoftFocusActiveState } = useRecordTableStates(recordTableId);
+  const disableSoftFocus = useDisableSoftFocus(recordTableIdFromContext);
+
+  const isSoftFocusActiveState = useRecoilComponentCallbackStateV2(
+    isSoftFocusActiveComponentState,
+    recordTableIdFromContext,
+  );
+
+  const resetTableRowSelection = useResetTableRowSelection(
+    recordTableIdFromContext,
+  );
 
   return useRecoilCallback(
     ({ snapshot }) =>
       () => {
         const isSoftFocusActive = getSnapshotValue(
           snapshot,
-          getIsSoftFocusActiveState(),
+          isSoftFocusActiveState,
         );
 
-        const currentHotkeyScope = snapshot
-          .getLoadable(currentHotkeyScopeState())
-          .getValue();
+        resetTableRowSelection();
 
         if (!isSoftFocusActive) {
           return;
         }
 
-        if (currentHotkeyScope?.scope === TableHotkeyScope.Table) {
-          return;
-        }
-
-        closeCurrentCellInEditMode();
         disableSoftFocus();
       },
-    [closeCurrentCellInEditMode, disableSoftFocus, getIsSoftFocusActiveState],
+    [disableSoftFocus, isSoftFocusActiveState, resetTableRowSelection],
   );
 };

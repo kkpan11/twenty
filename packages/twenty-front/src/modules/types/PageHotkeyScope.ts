@@ -1,8 +1,10 @@
 export enum PageHotkeyScope {
   Settings = 'settings',
-  CreateWokspace = 'create-workspace',
+  CreateWorkspace = 'create-workspace',
   SignInUp = 'sign-in-up',
   CreateProfile = 'create-profile',
+  InviteTeam = 'invite-team',
+  SyncEmail = 'sync-email',
   PlanRequired = 'plan-required',
   ShowPage = 'show-page',
   PersonShowPage = 'person-show-page',

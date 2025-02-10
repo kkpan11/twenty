@@ -1,16 +1,16 @@
 import { Injectable } from '@nestjs/common';
 
-import diff from 'microdiff';
 import omit from 'lodash.omit';
+import diff from 'microdiff';
 
 import {
   ComparatorAction,
   ObjectComparatorResult,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/comparator.interface';
-import { ComputedPartialObjectMetadata } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
+import { ComputedPartialWorkspaceEntity } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/partial-object-metadata.interface';
 
+import { ObjectMetadataEntity } from 'src/engine/metadata-modules/object-metadata/object-metadata.entity';
 import { transformMetadataForComparison } from 'src/engine/workspace-manager/workspace-sync-metadata/comparators/utils/transform-metadata-for-comparison.util';
-import { ObjectMetadataEntity } from 'src/engine-metadata/object-metadata/object-metadata.entity';
 
 const objectPropertiesToIgnore = [
   'id',
@@ -27,8 +27,11 @@ export class WorkspaceObjectComparator {
   constructor() {}
 
   public compare(
-    originalObjectMetadata: ObjectMetadataEntity | undefined,
-    standardObjectMetadata: ComputedPartialObjectMetadata,
+    originalObjectMetadata: Omit<ObjectMetadataEntity, 'fields'> | undefined,
+    standardObjectMetadata: Omit<
+      ComputedPartialWorkspaceEntity,
+      'fields' | 'indexMetadatas'
+    >,
   ): ObjectComparatorResult {
     // If the object doesn't exist in the original metadata, we need to create it
     if (!originalObjectMetadata) {
@@ -38,7 +41,8 @@ export class WorkspaceObjectComparator {
       };
     }
 
-    const objectPropertiesToUpdate: Partial<ComputedPartialObjectMetadata> = {};
+    const objectPropertiesToUpdate: Partial<ComputedPartialWorkspaceEntity> =
+      {};
 
     // Only compare properties that are not ignored
     const partialOriginalObjectMetadata = transformMetadataForComparison(

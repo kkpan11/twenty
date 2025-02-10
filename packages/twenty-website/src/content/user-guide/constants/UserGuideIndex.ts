@@ -1,29 +1,35 @@
-export type IndexSubtopic = {
-  title: string;
-  url: string;
-};
-
-export type IndexHeading = {
-  [heading: string]: IndexSubtopic[];
-};
-
 export const USER_GUIDE_INDEX = {
-  'Getting Started': [
-    { title: 'What is Twenty', url: 'what-is-twenty' },
-    { title: 'Create a Workspace', url: 'create-a-workspace' },
-    { title: 'Import your data', url: 'import-your-data' },
-  ],
-  Objects: [
-    { title: 'People', url: 'people' },
-    { title: 'Companies', url: 'companies' },
-    { title: 'Opportunities', url: 'opportunities' },
-    { title: 'Custom Objects', url: 'custom-objects' },
-    { title: 'Remote Objects', url: 'remote-objects' },
-  ],
-  Functions: [
-    { title: 'Email', url: 'email' },
-    { title: 'Calendar', url: 'calendar' },
-    { title: 'Notes', url: 'notes' },
-    { title: 'Tasks', url: 'tasks' },
-  ],
+  'User Guide': {
+    'Getting Started': [
+      { fileName: 'getting-started' },
+      { fileName: 'what-is-twenty' },
+      { fileName: 'create-workspace' },
+    ],
+    Objects: [
+      { fileName: 'objects' },
+      { fileName: 'standard-objects' },
+      { fileName: 'fields' },
+      { fileName: 'views-sort-filter' },
+      { fileName: 'table-views' },
+      { fileName: 'kanban-views' },
+      { fileName: 'import-export-data' },
+    ],
+    Functions: [
+      { fileName: 'functions' },
+      { fileName: 'emails' },
+      { fileName: 'notes' },
+      { fileName: 'tasks' },
+      { fileName: 'integrations' },
+      { fileName: 'api-webhooks' },
+    ],
+    Other: [
+      { fileName: 'other' },
+      { fileName: 'glossary' },
+      { fileName: 'tips' },
+      { fileName: 'github' },
+    ],
+  },
+  Developers: {
+    'Empty Section': [],
+  },
 };

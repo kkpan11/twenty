@@ -1,22 +1,23 @@
-import { ChangeEvent, useRef, useState } from 'react';
 import styled from '@emotion/styled';
-import { isNonEmptyArray } from '@sniptt/guards';
+import { ChangeEvent, useRef, useState } from 'react';
+import {
+  AnimatedPlaceholder,
+  AnimatedPlaceholderEmptyContainer,
+  AnimatedPlaceholderEmptySubTitle,
+  AnimatedPlaceholderEmptyTextContainer,
+  AnimatedPlaceholderEmptyTitle,
+  Button,
+  EMPTY_PLACEHOLDER_TRANSITION_PROPS,
+  IconPlus,
+} from 'twenty-ui';
 
+import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
 import { AttachmentList } from '@/activities/files/components/AttachmentList';
 import { DropZone } from '@/activities/files/components/DropZone';
 import { useAttachments } from '@/activities/files/hooks/useAttachments';
 import { useUploadAttachmentFile } from '@/activities/files/hooks/useUploadAttachmentFile';
 import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { IconPlus } from '@/ui/display/icon';
-import { Button } from '@/ui/input/button/components/Button';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
-import {
-  AnimatedPlaceholderEmptyContainer,
-  AnimatedPlaceholderEmptySubTitle,
-  AnimatedPlaceholderEmptyTextContainer,
-  AnimatedPlaceholderEmptyTitle,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
 
 const StyledAttachmentsContainer = styled.div`
   display: flex;
@@ -32,7 +33,6 @@ const StyledFileInput = styled.input`
 
 const StyledDropZoneContainer = styled.div`
   height: 100%;
-  padding: ${({ theme }) => theme.spacing(6)};
 `;
 
 export const Attachments = ({
@@ -41,7 +41,7 @@ export const Attachments = ({
   targetableObject: ActivityTargetableObject;
 }) => {
   const inputFileRef = useRef<HTMLInputElement>(null);
-  const { attachments } = useAttachments(targetableObject);
+  const { attachments, loading } = useAttachments(targetableObject);
   const { uploadAttachmentFile } = useUploadAttachmentFile();
 
   const [isDraggingFile, setIsDraggingFile] = useState(false);
@@ -58,7 +58,13 @@ export const Attachments = ({
     await uploadAttachmentFile(file, targetableObject);
   };
 
-  if (!isNonEmptyArray(attachments)) {
+  const isAttachmentsEmpty = !attachments || attachments.length === 0;
+
+  if (loading && isAttachmentsEmpty) {
+    return <SkeletonLoader />;
+  }
+
+  if (isAttachmentsEmpty) {
     return (
       <StyledDropZoneContainer onDragEnter={() => setIsDraggingFile(true)}>
         {isDraggingFile ? (
@@ -67,7 +73,10 @@ export const Attachments = ({
             onUploadFile={onUploadFile}
           />
         ) : (
-          <AnimatedPlaceholderEmptyContainer>
+          <AnimatedPlaceholderEmptyContainer
+            // eslint-disable-next-line react/jsx-props-no-spreading
+            {...EMPTY_PLACEHOLDER_TRANSITION_PROPS}
+          >
             <AnimatedPlaceholder type="noFile" />
             <AnimatedPlaceholderEmptyTextContainer>
               <AnimatedPlaceholderEmptyTitle>

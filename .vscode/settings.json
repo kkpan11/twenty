@@ -5,21 +5,24 @@
     "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit",
-      "source.addMissingImports": "always"
+      "source.addMissingImports": "always",
+      "source.organizeImports": "always"
     }
   },
   "[javascript]": {
     "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit",
-      "source.addMissingImports": "always"
+      "source.addMissingImports": "always",
+      "source.organizeImports": "always"
     }
   },
   "[typescriptreact]": {
     "editor.formatOnSave": false,
     "editor.codeActionsOnSave": {
       "source.fixAll.eslint": "explicit",
-      "source.addMissingImports": "always"
+      "source.addMissingImports": "always",
+      "source.organizeImports": "always"
     }
   },
   "[json]": {
@@ -39,14 +42,13 @@
     "twentyhq"
   ],
   "typescript.preferences.importModuleSpecifier": "non-relative",
-  "[javascript][typescript][typescriptreact]": {
-    "editor.codeActionsOnSave": {
-      "source.fixAll.eslint": "explicit",
-      "source.addMissingImports": "always"
-    }
-  },
   "search.exclude": {
     "**/.yarn": true,
   },
-  "eslint.debug": true
+  "eslint.debug": true,
+  "files.associations": {
+    ".cursorrules": "markdown"
+  },
+  "jestrunner.codeLensSelector": "**/*.{test,spec,integration-spec}.{js,jsx,ts,tsx}"
+  }
 }

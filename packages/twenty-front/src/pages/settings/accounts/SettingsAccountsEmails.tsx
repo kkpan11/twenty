@@ -1,26 +1,28 @@
-import { SettingsAccountsEmailsAccountsListCard } from '@/settings/accounts/components/SettingsAccountsEmailsAccountsListCard';
+import { SettingsAccountsMessageChannelsContainer } from '@/settings/accounts/components/SettingsAccountsMessageChannelsContainer';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Section } from '@/ui/layout/section/components/Section';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { Section } from 'twenty-ui';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsAccountsEmails = () => (
-  <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+  <SubMenuTopBarContainer
+    title="Emails"
+    links={[
+      {
+        children: 'User',
+        href: getSettingsPath(SettingsPath.ProfilePage),
+      },
+      {
+        children: 'Accounts',
+        href: getSettingsPath(SettingsPath.Accounts),
+      },
+      { children: 'Emails' },
+    ]}
+  >
     <SettingsPageContainer>
-      <Breadcrumb
-        links={[
-          { children: 'Accounts', href: '/settings/accounts' },
-          { children: 'Emails' },
-        ]}
-      />
       <Section>
-        <H2Title
-          title="Emails sync"
-          description="Sync your inboxes and set your privacy settings"
-        />
-        <SettingsAccountsEmailsAccountsListCard />
+        <SettingsAccountsMessageChannelsContainer />
       </Section>
     </SettingsPageContainer>
   </SubMenuTopBarContainer>

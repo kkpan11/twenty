@@ -1,11 +1,10 @@
-import { useState } from 'react';
 import { Meta, StoryObj } from '@storybook/react';
+import { useState } from 'react';
+import { ComponentDecorator } from 'twenty-ui';
 
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
+import { TextInput, TextInputProps } from '../TextInput';
 
-import { TextInput, TextInputComponentProps } from '../TextInput';
-
-type RenderProps = TextInputComponentProps;
+type RenderProps = TextInputProps;
 
 const Render = (args: RenderProps) => {
   const [value, setValue] = useState(args.value);

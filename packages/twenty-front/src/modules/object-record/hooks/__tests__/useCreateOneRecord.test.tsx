@@ -1,7 +1,4 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
 import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import {
@@ -9,6 +6,8 @@ import {
   responseData,
 } from '@/object-record/hooks/__mocks__/useCreateOneRecord';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 
 const personId = 'a7286b9a-c039-4a89-9567-2dfa7953cda9';
 const input = { name: { firstName: 'John', lastName: 'Doe' } };
@@ -16,6 +15,12 @@ const input = { name: { firstName: 'John', lastName: 'Doe' } };
 jest.mock('uuid', () => ({
   v4: jest.fn(() => personId),
 }));
+
+jest.mock('@/object-record/hooks/useRefetchAggregateQueries');
+const mockRefetchAggregateQueries = jest.fn();
+(useRefetchAggregateQueries as jest.Mock).mockReturnValue({
+  refetchAggregateQueries: mockRefetchAggregateQueries,
+});
 
 const mocks = [
   {
@@ -31,15 +36,14 @@ const mocks = [
   },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
-);
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useCreateOneRecord', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
   it('works as expected', async () => {
     const { result } = renderHook(
       () =>
@@ -53,11 +57,11 @@ describe('useCreateOneRecord', () => {
 
     await act(async () => {
       const res = await result.current.createOneRecord(input);
-      console.log('res', res);
       expect(res).toBeDefined();
       expect(res).toHaveProperty('id', personId);
     });
 
     expect(mocks[0].result).toHaveBeenCalled();
+    expect(mockRefetchAggregateQueries).toHaveBeenCalledTimes(1);
   });
 });

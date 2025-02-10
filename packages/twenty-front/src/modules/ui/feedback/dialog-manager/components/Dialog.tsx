@@ -1,19 +1,19 @@
-import { useCallback } from 'react';
 import styled from '@emotion/styled';
 import { motion } from 'framer-motion';
+import { useCallback } from 'react';
 import { Key } from 'ts-key-enum';
 
-import { Button } from '@/ui/input/button/components/Button';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
+import { Button } from 'twenty-ui';
 
 import { DialogHotkeyScope } from '../types/DialogHotkeyScope';
 
 const StyledDialogOverlay = styled(motion.div)`
   align-items: center;
-  background: ${({ theme }) => theme.background.overlay};
+  background: ${({ theme }) => theme.background.overlayPrimary};
   display: flex;
-  height: 100vh;
+  height: 100dvh;
   justify-content: center;
   left: 0;
   position: fixed;

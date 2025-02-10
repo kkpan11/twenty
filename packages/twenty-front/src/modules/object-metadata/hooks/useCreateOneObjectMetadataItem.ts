@@ -1,5 +1,4 @@
-import { ApolloClient, useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
+import { useMutation } from '@apollo/client';
 
 import {
   CreateObjectInput,
@@ -8,28 +7,32 @@ import {
 } from '~/generated-metadata/graphql';
 
 import { CREATE_ONE_OBJECT_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
 
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItem';
 import { useApolloMetadataClient } from './useApolloMetadataClient';
 
 export const useCreateOneObjectMetadataItem = () => {
   const apolloMetadataClient = useApolloMetadataClient();
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
 
   const [mutate] = useMutation<
     CreateOneObjectMetadataItemMutation,
     CreateOneObjectMetadataItemMutationVariables
   >(CREATE_ONE_OBJECT_METADATA_ITEM, {
-    client: apolloMetadataClient ?? ({} as ApolloClient<any>),
+    client: apolloMetadataClient,
   });
 
   const createOneObjectMetadataItem = async (input: CreateObjectInput) => {
-    return await mutate({
+    const createdObjectMetadata = await mutate({
       variables: {
         input: { object: input },
       },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
     });
+
+    await refreshObjectMetadataItems();
+
+    return createdObjectMetadata;
   };
 
   return {

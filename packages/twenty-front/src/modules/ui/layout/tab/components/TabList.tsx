@@ -1,25 +1,32 @@
-import * as React from 'react';
-import styled from '@emotion/styled';
-import { useRecoilValue } from 'recoil';
-
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { TabListFromUrlOptionalEffect } from '@/ui/layout/tab/components/TabListFromUrlOptionalEffect';
 import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
 import { TabListScope } from '@/ui/layout/tab/scopes/TabListScope';
-
+import { LayoutCard } from '@/ui/layout/tab/types/LayoutCard';
+import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
+import styled from '@emotion/styled';
+import * as React from 'react';
+import { useEffect } from 'react';
+import { IconComponent } from 'twenty-ui';
 import { Tab } from './Tab';
 
-type SingleTabProps = {
+export type SingleTabProps = {
   title: string;
   Icon?: IconComponent;
   id: string;
   hide?: boolean;
   disabled?: boolean;
-  hasBetaPill?: boolean;
+  pill?: string | React.ReactElement;
+  cards?: LayoutCard[];
+  logo?: string;
 };
 
 type TabListProps = {
-  tabListId: string;
+  tabListInstanceId: string;
   tabs: SingleTabProps[];
+  loading?: boolean;
+  behaveAsLinks?: boolean;
+  className?: string;
+  isInRightDrawer?: boolean;
 };
 
 const StyledContainer = styled.div`
@@ -28,42 +35,64 @@ const StyledContainer = styled.div`
   display: flex;
   gap: ${({ theme }) => theme.spacing(2)};
   height: 40px;
-  padding-left: ${({ theme }) => theme.spacing(2)};
   user-select: none;
-  overflow: auto;
 `;
 
-export const TabList = ({ tabs, tabListId }: TabListProps) => {
-  const initialActiveTabId = tabs[0].id;
+export const TabList = ({
+  tabs,
+  tabListInstanceId,
+  loading,
+  behaveAsLinks = true,
+  isInRightDrawer,
+  className,
+}: TabListProps) => {
+  const visibleTabs = tabs.filter((tab) => !tab.hide);
 
-  const { getActiveTabIdState, setActiveTabId } = useTabList(tabListId);
+  const { activeTabId, setActiveTabId } = useTabList(tabListInstanceId);
 
-  const activeTabId = useRecoilValue(getActiveTabIdState());
+  const initialActiveTabId = activeTabId || visibleTabs[0]?.id || '';
 
-  React.useEffect(() => {
+  useEffect(() => {
     setActiveTabId(initialActiveTabId);
   }, [initialActiveTabId, setActiveTabId]);
 
+  if (visibleTabs.length <= 1) {
+    return null;
+  }
+
   return (
-    <TabListScope tabListScopeId={tabListId}>
-      <StyledContainer>
-        {tabs
-          .filter((tab) => !tab.hide)
-          .map((tab) => (
+    <TabListScope tabListScopeId={tabListInstanceId}>
+      <TabListFromUrlOptionalEffect
+        isInRightDrawer={!!isInRightDrawer}
+        componentInstanceId={tabListInstanceId}
+        tabListIds={tabs.map((tab) => tab.id)}
+      />
+      <ScrollWrapper
+        defaultEnableYScroll={false}
+        contextProviderName="tabList"
+        componentInstanceId={`scroll-wrapper-tab-list-${tabListInstanceId}`}
+      >
+        <StyledContainer className={className}>
+          {visibleTabs.map((tab) => (
             <Tab
               id={tab.id}
               key={tab.id}
               title={tab.title}
               Icon={tab.Icon}
+              logo={tab.logo}
               active={tab.id === activeTabId}
+              disabled={tab.disabled ?? loading}
+              pill={tab.pill}
+              to={behaveAsLinks ? `#${tab.id}` : undefined}
               onClick={() => {
-                setActiveTabId(tab.id);
+                if (!behaveAsLinks) {
+                  setActiveTabId(tab.id);
+                }
               }}
-              disabled={tab.disabled}
-              hasBetaPill={tab.hasBetaPill}
             />
           ))}
-      </StyledContainer>
+        </StyledContainer>
+      </ScrollWrapper>
     </TabListScope>
   );
 };

@@ -1,32 +1,32 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
 import styled from '@emotion/styled';
 import { isNonEmptyString } from '@sniptt/guards';
 import { DateTime } from 'luxon';
-import { useRecoilState } from 'recoil';
+import { useState } from 'react';
+import { useParams } from 'react-router-dom';
+import { useRecoilCallback, useRecoilValue } from 'recoil';
+import { Button, H2Title, IconRepeat, IconTrash, Section } from 'twenty-ui';
 
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
 import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
-import { SettingsHeaderContainer } from '@/settings/components/SettingsHeaderContainer';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { ApiKeyInput } from '@/settings/developers/components/ApiKeyInput';
-import { useGeneratedApiKeys } from '@/settings/developers/hooks/useGeneratedApiKeys';
-import { generatedApiKeyFamilyState } from '@/settings/developers/states/generatedApiKeyFamilyState';
+import { ApiKeyNameInput } from '@/settings/developers/components/ApiKeyNameInput';
+import { apiKeyTokenFamilyState } from '@/settings/developers/states/apiKeyTokenFamilyState';
 import { ApiKey } from '@/settings/developers/types/api-key/ApiKey';
-import { computeNewExpirationDate } from '@/settings/developers/utils/compute-new-expiration-date';
-import { formatExpiration } from '@/settings/developers/utils/format-expiration';
-import { IconRepeat, IconSettings, IconTrash } from '@/ui/display/icon';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
-import { Button } from '@/ui/input/button/components/Button';
+import { computeNewExpirationDate } from '@/settings/developers/utils/computeNewExpirationDate';
+import { formatExpiration } from '@/settings/developers/utils/formatExpiration';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
+import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { TextInput } from '@/ui/input/components/TextInput';
 import { ConfirmationModal } from '@/ui/layout/modal/components/ConfirmationModal';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Section } from '@/ui/layout/section/components/Section';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { Trans, useLingui } from '@lingui/react/macro';
 import { useGenerateApiKeyTokenMutation } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { useNavigateSettings } from '~/hooks/useNavigateSettings';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 const StyledInfo = styled.span`
   color: ${({ theme }) => theme.font.color.light};
@@ -43,17 +43,26 @@ const StyledInputContainer = styled.div`
 `;
 
 export const SettingsDevelopersApiKeyDetail = () => {
+  const { t } = useLingui();
+  const { enqueueSnackBar } = useSnackBar();
   const [isRegenerateKeyModalOpen, setIsRegenerateKeyModalOpen] =
     useState(false);
   const [isDeleteApiKeyModalOpen, setIsDeleteApiKeyModalOpen] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const navigate = useNavigate();
+  const navigate = useNavigateSettings();
   const { apiKeyId = '' } = useParams();
 
-  const setGeneratedApi = useGeneratedApiKeys();
-  const [generatedApiKey] = useRecoilState(
-    generatedApiKeyFamilyState(apiKeyId),
+  const apiKeyToken = useRecoilValue(apiKeyTokenFamilyState(apiKeyId));
+
+  const setApiKeyTokenCallback = useRecoilCallback(
+    ({ set }) =>
+      (apiKeyId: string, token: string) => {
+        set(apiKeyTokenFamilyState(apiKeyId), token);
+      },
+    [],
   );
+
   const [generateOneApiKeyToken] = useGenerateApiKeyTokenMutation();
   const { createOneRecord: createOneApiKey } = useCreateOneRecord<ApiKey>({
     objectNameSingular: CoreObjectNameSingular.ApiKey,
@@ -62,18 +71,33 @@ export const SettingsDevelopersApiKeyDetail = () => {
     objectNameSingular: CoreObjectNameSingular.ApiKey,
   });
 
-  const { record: apiKeyData } = useFindOneRecord({
+  const [apiKeyName, setApiKeyName] = useState('');
+
+  const { record: apiKeyData, loading } = useFindOneRecord({
     objectNameSingular: CoreObjectNameSingular.ApiKey,
     objectRecordId: apiKeyId,
+    onCompleted: (record) => {
+      setApiKeyName(record.name);
+    },
   });
 
   const deleteIntegration = async (redirect = true) => {
-    await updateApiKey?.({
-      idToUpdate: apiKeyId,
-      updateOneRecordInput: { revokedAt: DateTime.now().toString() },
-    });
-    if (redirect) {
-      navigate('/settings/developers');
+    setIsLoading(true);
+
+    try {
+      await updateApiKey?.({
+        idToUpdate: apiKeyId,
+        updateOneRecordInput: { revokedAt: DateTime.now().toString() },
+      });
+      if (redirect) {
+        navigate(SettingsPath.Developers);
+      }
+    } catch (err) {
+      enqueueSnackBar(t`Error deleting api key: ${err}`, {
+        variant: SnackBarVariant.Error,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -103,63 +127,70 @@ export const SettingsDevelopersApiKeyDetail = () => {
   };
 
   const regenerateApiKey = async () => {
-    if (isNonEmptyString(apiKeyData?.name)) {
-      const newExpiresAt = computeNewExpirationDate(
-        apiKeyData?.expiresAt,
-        apiKeyData?.createdAt,
-      );
-      const apiKey = await createIntegration(apiKeyData?.name, newExpiresAt);
-      await deleteIntegration(false);
+    setIsLoading(true);
+    try {
+      if (isNonEmptyString(apiKeyData?.name)) {
+        const newExpiresAt = computeNewExpirationDate(
+          apiKeyData?.expiresAt,
+          apiKeyData?.createdAt,
+        );
+        const apiKey = await createIntegration(apiKeyData?.name, newExpiresAt);
+        await deleteIntegration(false);
 
-      if (isNonEmptyString(apiKey?.token)) {
-        setGeneratedApi(apiKey.id, apiKey.token);
-        navigate(`/settings/developers/api-keys/${apiKey.id}`);
+        if (isNonEmptyString(apiKey?.token)) {
+          setApiKeyTokenCallback(apiKey.id, apiKey.token);
+          navigate(SettingsPath.DevelopersApiKeyDetail, {
+            apiKeyId: apiKey.id,
+          });
+        }
       }
+    } catch (err) {
+      enqueueSnackBar(t`Error regenerating api key: ${err}`, {
+        variant: SnackBarVariant.Error,
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  useEffect(() => {
-    if (isDefined(apiKeyData)) {
-      return () => {
-        setGeneratedApi(apiKeyId, null);
-      };
-    }
-  });
+  const confirmationValue = t`yes`;
 
   return (
     <>
       {apiKeyData?.name && (
-        <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
+        <SubMenuTopBarContainer
+          title={apiKeyData?.name}
+          links={[
+            {
+              children: t`Workspace`,
+              href: getSettingsPath(SettingsPath.Workspace),
+            },
+            {
+              children: t`Developers`,
+              href: getSettingsPath(SettingsPath.Developers),
+            },
+            { children: t`${apiKeyName} API Key` },
+          ]}
+        >
           <SettingsPageContainer>
-            <SettingsHeaderContainer>
-              <Breadcrumb
-                links={[
-                  { children: 'Developers', href: '/settings/developers' },
-                  { children: `${apiKeyData.name} API Key` },
-                ]}
-              />
-            </SettingsHeaderContainer>
             <Section>
-              {generatedApiKey ? (
+              {apiKeyToken ? (
                 <>
                   <H2Title
-                    title="Api Key"
-                    description="Copy this key as it will only be visible this one time"
+                    title={t`API Key`}
+                    description={t`Copy this key as it will not be visible again`}
                   />
-                  <ApiKeyInput apiKey={generatedApiKey} />
-                  <StyledInfo>
-                    {formatExpiration(apiKeyData?.expiresAt || '', true, false)}
-                  </StyledInfo>
+                  <ApiKeyInput apiKey={apiKeyToken} />
                 </>
               ) : (
                 <>
                   <H2Title
-                    title="Api Key"
-                    description="Regenerate an Api key"
+                    title={t`API Key`}
+                    description={t`Regenerate an API key`}
                   />
                   <StyledInputContainer>
                     <Button
-                      title="Regenerate Key"
+                      title={t`Regenerate Key`}
                       Icon={IconRepeat}
                       onClick={() => setIsRegenerateKeyModalOpen(true)}
                     />
@@ -175,23 +206,39 @@ export const SettingsDevelopersApiKeyDetail = () => {
               )}
             </Section>
             <Section>
-              <H2Title title="Name" description="Name of your API key" />
+              <H2Title title={t`Name`} description={t`Name of your API key`} />
+              <ApiKeyNameInput
+                apiKeyName={apiKeyName}
+                apiKeyId={apiKeyData?.id}
+                disabled={loading}
+                onNameUpdate={setApiKeyName}
+              />
+            </Section>
+            <Section>
+              <H2Title
+                title={t`Expiration`}
+                description={t`When the key will be disabled`}
+              />
               <TextInput
-                placeholder="E.g. backoffice integration"
-                value={apiKeyData.name}
+                placeholder={t`E.g. backoffice integration`}
+                value={formatExpiration(
+                  apiKeyData?.expiresAt || '',
+                  true,
+                  false,
+                )}
                 disabled
                 fullWidth
               />
             </Section>
             <Section>
               <H2Title
-                title="Danger zone"
-                description="Delete this integration"
+                title={t`Danger zone`}
+                description={t`Delete this integration`}
               />
               <Button
                 accent="danger"
                 variant="secondary"
-                title="Disable"
+                title={t`Delete`}
                 Icon={IconTrash}
                 onClick={() => setIsDeleteApiKeyModalOpen(true)}
               />
@@ -200,35 +247,38 @@ export const SettingsDevelopersApiKeyDetail = () => {
         </SubMenuTopBarContainer>
       )}
       <ConfirmationModal
-        confirmationPlaceholder="yes"
-        confirmationValue="yes"
+        confirmationPlaceholder={confirmationValue}
+        confirmationValue={confirmationValue}
         isOpen={isDeleteApiKeyModalOpen}
         setIsOpen={setIsDeleteApiKeyModalOpen}
-        title="Delete Api key"
+        title={t`Delete API key`}
         subtitle={
-          <>
-            Please type "yes" to confirm you want to delete this API Key. Be
-            aware that any script using this key will stop working.
-          </>
+          <Trans>
+            Please type {`"${confirmationValue}"`} to confirm you want to delete
+            this API Key. Be aware that any script using this key will stop
+            working.
+          </Trans>
         }
         onConfirmClick={deleteIntegration}
         deleteButtonText="Delete"
+        loading={isLoading}
       />
       <ConfirmationModal
-        confirmationPlaceholder="yes"
-        confirmationValue="yes"
+        confirmationPlaceholder={confirmationValue}
+        confirmationValue={confirmationValue}
         isOpen={isRegenerateKeyModalOpen}
         setIsOpen={setIsRegenerateKeyModalOpen}
-        title="Regenerate an Api key"
+        title={t`Regenerate an API key`}
         subtitle={
-          <>
+          <Trans>
             If you’ve lost this key, you can regenerate it, but be aware that
-            any script using this key will need to be updated. Please type "yes"
-            to confirm.
-          </>
+            any script using this key will need to be updated. Please type
+            {`"${confirmationValue}"`} to confirm.
+          </Trans>
         }
         onConfirmClick={regenerateApiKey}
-        deleteButtonText="Regenerate key"
+        deleteButtonText={t`Regenerate key`}
+        loading={isLoading}
       />
     </>
   );

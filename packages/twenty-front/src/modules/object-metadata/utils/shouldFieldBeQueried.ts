@@ -1,36 +1,32 @@
-import { isUndefined } from '@sniptt/guards';
-
-import { FieldType } from '@/object-record/record-field/types/FieldType';
+import { RecordGqlOperationGqlRecordFields } from '@/object-record/graphql/types/RecordGqlOperationGqlRecordFields';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { isDefined } from 'twenty-shared';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
 
 export const shouldFieldBeQueried = ({
   field,
-  depth,
-  eagerLoadedRelations,
+  recordGqlFields,
 }: {
   field: Pick<FieldMetadataItem, 'name' | 'type'>;
-  depth?: number;
-  eagerLoadedRelations?: Record<string, boolean>;
+  objectRecord?: ObjectRecord;
+  recordGqlFields?: RecordGqlOperationGqlRecordFields;
 }): any => {
-  const fieldType = field.type as FieldType;
-
-  if (!isUndefined(depth) && depth < 0) {
-    return false;
-  }
-
-  if (!isUndefined(depth) && depth < 1 && fieldType === 'RELATION') {
-    return false;
-  }
-
   if (
-    fieldType === 'RELATION' &&
-    !isUndefined(eagerLoadedRelations) &&
-    (isUndefined(eagerLoadedRelations[field.name]) ||
-      !eagerLoadedRelations[field.name])
+    isUndefinedOrNull(recordGqlFields) &&
+    field.type !== FieldMetadataType.RELATION
   ) {
-    return false;
+    return true;
+  }
+  if (
+    isDefined(recordGqlFields) &&
+    isDefined(recordGqlFields[field.name]) &&
+    recordGqlFields[field.name] !== false
+  ) {
+    return true;
   }
 
-  return true;
+  return false;
 };

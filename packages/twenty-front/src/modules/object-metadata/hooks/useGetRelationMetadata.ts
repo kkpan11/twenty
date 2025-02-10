@@ -1,48 +1,31 @@
 import { useRecoilCallback } from 'recoil';
 
 import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objectMetadataItemFamilySelector';
-import { RelationType } from '@/settings/data-model/types/RelationType';
-import {
-  FieldMetadataType,
-  RelationMetadataType,
-} from '~/generated-metadata/graphql';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
 
 export const useGetRelationMetadata = () =>
   useRecoilCallback(
     ({ snapshot }) =>
-      ({ fieldMetadataItem }: { fieldMetadataItem: FieldMetadataItem }) => {
-        if (fieldMetadataItem.type !== FieldMetadataType.Relation) return null;
+      ({
+        fieldMetadataItem,
+      }: {
+        fieldMetadataItem: Pick<
+          FieldMetadataItem,
+          'type' | 'relationDefinition'
+        >;
+      }) => {
+        if (fieldMetadataItem.type !== FieldMetadataType.RELATION) return null;
 
-        const relationMetadata =
-          fieldMetadataItem.fromRelationMetadata ||
-          fieldMetadataItem.toRelationMetadata;
+        const relationDefinition = fieldMetadataItem.relationDefinition;
 
-        if (!relationMetadata) return null;
-
-        const relationFieldMetadataId =
-          'toFieldMetadataId' in relationMetadata
-            ? relationMetadata.toFieldMetadataId
-            : relationMetadata.fromFieldMetadataId;
-
-        if (!relationFieldMetadataId) return null;
-
-        const relationType =
-          relationMetadata.relationType === RelationMetadataType.OneToMany &&
-          fieldMetadataItem.toRelationMetadata
-            ? 'MANY_TO_ONE'
-            : (relationMetadata.relationType as RelationType);
-
-        const relationObjectMetadataNameSingular =
-          'toObjectMetadata' in relationMetadata
-            ? relationMetadata.toObjectMetadata.nameSingular
-            : relationMetadata.fromObjectMetadata.nameSingular;
+        if (!relationDefinition) return null;
 
         const relationObjectMetadataItem = snapshot
           .getLoadable(
             objectMetadataItemFamilySelector({
-              objectName: relationObjectMetadataNameSingular,
+              objectName: relationDefinition.targetObjectMetadata.nameSingular,
               objectNameType: 'singular',
             }),
           )
@@ -52,7 +35,7 @@ export const useGetRelationMetadata = () =>
 
         const relationFieldMetadataItem =
           relationObjectMetadataItem.fields.find(
-            (field) => field.id === relationFieldMetadataId,
+            (field) => field.id === relationDefinition.targetFieldMetadata.id,
           );
 
         if (!relationFieldMetadataItem) return null;
@@ -60,7 +43,7 @@ export const useGetRelationMetadata = () =>
         return {
           relationFieldMetadataItem,
           relationObjectMetadataItem,
-          relationType,
+          relationType: relationDefinition.direction,
         };
       },
     [],

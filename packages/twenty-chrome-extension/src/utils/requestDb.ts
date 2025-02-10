@@ -1,31 +1,36 @@
-const requestDb = async (query: string) => {
-  const { apiKey } = await chrome.storage.local.get('apiKey');
-  const { serverBaseUrl } = await chrome.storage.local.get('serverBaseUrl');
+import { OperationVariables } from '@apollo/client';
+import { DocumentNode } from 'graphql';
 
-  const options = {
-    method: 'POST',
-    body: JSON.stringify({ query }),
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-      Authorization: `Bearer ${apiKey}`,
-    },
-  };
+import { isDefined } from 'twenty-shared';
+import getApolloClient from '~/utils/apolloClient';
 
-  const response = await fetch(
-    `${
-      serverBaseUrl ? serverBaseUrl : import.meta.env.VITE_SERVER_BASE_URL
-    }/graphql`,
-    options,
-  );
+export const callQuery = async <T>(
+  query: DocumentNode,
+  variables?: OperationVariables,
+): Promise<T | null> => {
+  try {
+    const client = await getApolloClient();
+    const { data } = await client.query<T>({ query, variables });
 
-  if (!response.ok) {
-    // TODO: Handle error gracefully and remove the console statement.
-    /* eslint-disable no-console */
-    console.error(response);
+    if (isDefined(data)) return data;
+    else return null;
+  } catch (error) {
+    return null;
   }
-
-  return await response.json();
 };
 
-export default requestDb;
+export const callMutation = async <T>(
+  mutation: DocumentNode,
+  variables?: OperationVariables,
+): Promise<T | null> => {
+  try {
+    const client = await getApolloClient();
+
+    const { data } = await client.mutate<T>({ mutation, variables });
+
+    if (isDefined(data)) return data;
+    else return null;
+  } catch (error) {
+    return null;
+  }
+};

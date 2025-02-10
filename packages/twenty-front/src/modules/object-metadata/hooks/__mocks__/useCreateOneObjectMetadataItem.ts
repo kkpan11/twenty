@@ -21,6 +21,41 @@ export const query = gql`
   }
 `;
 
+export const findManyViewsQuery = gql`
+  query FindManyViews(
+    $filter: ViewFilterInput
+    $orderBy: [ViewOrderByInput]
+    $lastCursor: String
+    $limit: Int
+  ) {
+    views(
+      filter: $filter
+      orderBy: $orderBy
+      first: $limit
+      after: $lastCursor
+    ) {
+      edges {
+        node {
+          __typename
+          id
+          objectMetadataId
+          type
+          createdAt
+          name
+          updatedAt
+        }
+        cursor
+      }
+      pageInfo {
+        hasNextPage
+        startCursor
+        endCursor
+      }
+      totalCount
+    }
+  }
+`;
+
 export const variables = {
   input: {
     object: {
@@ -46,6 +81,6 @@ export const responseData = {
   isActive: true,
   createdAt: '',
   updatedAt: '',
-  labelIdentifierFieldMetadataId: '',
+  labelIdentifierFieldMetadataId: '20202020-72ba-4e11-a36d-e17b544541e1',
   imageIdentifierFieldMetadataId: '',
 };

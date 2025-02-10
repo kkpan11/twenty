@@ -2,9 +2,9 @@ import { Injectable } from '@nestjs/common';
 
 import { DataSource, EntityManager } from 'typeorm';
 
-import { DataSourceService } from 'src/engine-metadata/data-source/data-source.service';
+import { DataSourceService } from 'src/engine/metadata-modules/data-source/data-source.service';
 import { TypeORMService } from 'src/database/typeorm/typeorm.service';
-import { DataSourceEntity } from 'src/engine-metadata/data-source/data-source.entity';
+import { DataSourceEntity } from 'src/engine/metadata-modules/data-source/data-source.entity';
 
 @Injectable()
 export class WorkspaceDataSourceService {
@@ -27,6 +27,15 @@ export class WorkspaceDataSourceService {
       await this.connectedToWorkspaceDataSourceAndReturnMetadata(workspaceId);
 
     return dataSource;
+  }
+
+  public async checkSchemaExists(workspaceId: string) {
+    const dataSource =
+      await this.dataSourceService.getDataSourcesMetadataFromWorkspaceId(
+        workspaceId,
+      );
+
+    return dataSource.length > 0;
   }
 
   public async connectedToWorkspaceDataSourceAndReturnMetadata(

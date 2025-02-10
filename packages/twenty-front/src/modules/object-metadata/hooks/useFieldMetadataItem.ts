@@ -1,11 +1,7 @@
-import { v4 } from 'uuid';
-
-import { FieldType } from '@/object-record/record-field/types/FieldType';
-import { Field } from '~/generated/graphql';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { useDeleteOneRelationMetadataItem } from '@/object-metadata/hooks/useDeleteOneRelationMetadataItem';
+import { Field, FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
-import { FieldMetadataOption } from '../types/FieldMetadataOption';
 import { formatFieldMetadataItemInput } from '../utils/formatFieldMetadataItemInput';
 
 import { useCreateOneFieldMetadataItem } from './useCreateOneFieldMetadataItem';
@@ -16,59 +12,68 @@ export const useFieldMetadataItem = () => {
   const { createOneFieldMetadataItem } = useCreateOneFieldMetadataItem();
   const { updateOneFieldMetadataItem } = useUpdateOneFieldMetadataItem();
   const { deleteOneFieldMetadataItem } = useDeleteOneFieldMetadataItem();
+  const { deleteOneRelationMetadataItem } = useDeleteOneRelationMetadataItem();
 
   const createMetadataField = (
-    input: Pick<Field, 'label' | 'icon' | 'description'> & {
-      defaultValue?: unknown;
+    input: Pick<
+      Field,
+      | 'name'
+      | 'label'
+      | 'icon'
+      | 'description'
+      | 'defaultValue'
+      | 'type'
+      | 'options'
+      | 'settings'
+      | 'isLabelSyncedWithName'
+    > & {
       objectMetadataId: string;
-      options?: Omit<FieldMetadataOption, 'id'>[];
-      type: FieldMetadataType;
     },
-  ) =>
-    createOneFieldMetadataItem({
-      ...formatFieldMetadataItemInput(input),
-      defaultValue: input.defaultValue,
+  ) => {
+    const formattedInput = formatFieldMetadataItemInput(input);
+
+    return createOneFieldMetadataItem({
+      ...formattedInput,
       objectMetadataId: input.objectMetadataId,
-      type: input.type as FieldType,
+      type: input.type,
+      label: formattedInput.label ?? '',
+      name: formattedInput.name ?? '',
+      isLabelSyncedWithName: formattedInput.isLabelSyncedWithName ?? true,
     });
+  };
 
-  const editMetadataField = (
-    input: Pick<Field, 'id' | 'label' | 'icon' | 'description'> & {
-      options?: FieldMetadataOption[];
-    },
+  const activateMetadataField = (
+    fieldMetadataId: string,
+    objectMetadataId: string,
   ) =>
     updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: input.id,
-      updatePayload: formatFieldMetadataItemInput({
-        ...input,
-        // In Edit mode, all options need an id,
-        // so we generate an id for newly created options.
-        options: input.options?.map((option) =>
-          option.id ? option : { ...option, id: v4() },
-        ),
-      }),
-    });
-
-  const activateMetadataField = (metadataField: FieldMetadataItem) =>
-    updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: metadataField.id,
+      objectMetadataId: objectMetadataId,
+      fieldMetadataIdToUpdate: fieldMetadataId,
       updatePayload: { isActive: true },
     });
 
-  const disableMetadataField = (metadataField: FieldMetadataItem) =>
+  const deactivateMetadataField = (
+    fieldMetadataId: string,
+    objectMetadataId: string,
+  ) =>
     updateOneFieldMetadataItem({
-      fieldMetadataIdToUpdate: metadataField.id,
+      objectMetadataId: objectMetadataId,
+      fieldMetadataIdToUpdate: fieldMetadataId,
       updatePayload: { isActive: false },
     });
 
-  const eraseMetadataField = (metadataField: FieldMetadataItem) =>
-    deleteOneFieldMetadataItem(metadataField.id);
+  const deleteMetadataField = (metadataField: FieldMetadataItem) => {
+    return metadataField.type === FieldMetadataType.RELATION
+      ? deleteOneRelationMetadataItem(
+          metadataField.relationDefinition?.relationId,
+        )
+      : deleteOneFieldMetadataItem(metadataField.id);
+  };
 
   return {
     activateMetadataField,
     createMetadataField,
-    disableMetadataField,
-    eraseMetadataField,
-    editMetadataField,
+    deactivateMetadataField,
+    deleteMetadataField,
   };
 };

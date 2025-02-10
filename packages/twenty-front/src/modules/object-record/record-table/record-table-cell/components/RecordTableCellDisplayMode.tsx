@@ -1,29 +1,25 @@
-import { useIsFieldInputOnly } from '@/object-record/record-field/hooks/useIsFieldInputOnly';
-import { useOpenRecordTableCell } from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCell';
-
-import { useSetSoftFocusOnCurrentTableCell } from '../hooks/useSetSoftFocusOnCurrentTableCell';
-
+import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
+import { useRecordTableBodyContextOrThrow } from '@/object-record/record-table/contexts/RecordTableBodyContext';
+import { useContext } from 'react';
 import { RecordTableCellDisplayContainer } from './RecordTableCellDisplayContainer';
 
 export const RecordTableCellDisplayMode = ({
   children,
-}: React.PropsWithChildren<unknown>) => {
-  const setSoftFocusOnCurrentCell = useSetSoftFocusOnCurrentTableCell();
+  softFocus,
+}: React.PropsWithChildren<{ softFocus?: boolean }>) => {
+  const { recordId } = useContext(FieldContext);
 
-  const isFieldInputOnly = useIsFieldInputOnly();
+  const { onActionMenuDropdownOpened } = useRecordTableBodyContextOrThrow();
 
-  const { openTableCell } = useOpenRecordTableCell();
-
-  const handleClick = () => {
-    setSoftFocusOnCurrentCell();
-
-    if (!isFieldInputOnly) {
-      openTableCell();
-    }
+  const handleActionMenuDropdown = (event: React.MouseEvent) => {
+    onActionMenuDropdownOpened(event, recordId);
   };
 
   return (
-    <RecordTableCellDisplayContainer onClick={handleClick}>
+    <RecordTableCellDisplayContainer
+      softFocus={softFocus}
+      onContextMenu={handleActionMenuDropdown}
+    >
       {children}
     </RecordTableCellDisplayContainer>
   );

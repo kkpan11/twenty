@@ -1,4 +1,5 @@
-import { createState } from '@/ui/utilities/state/utils/createState';
+import { createState } from '@ui/utilities/state/utils/createState';
+
 import { Workspace } from '~/generated/graphql';
 
 export type CurrentWorkspace = Pick<
@@ -9,9 +10,19 @@ export type CurrentWorkspace = Pick<
   | 'displayName'
   | 'allowImpersonation'
   | 'featureFlags'
-  | 'subscriptionStatus'
   | 'activationStatus'
+  | 'billingSubscriptions'
   | 'currentBillingSubscription'
+  | 'workspaceMembersCount'
+  | 'isPublicInviteLinkEnabled'
+  | 'isGoogleAuthEnabled'
+  | 'isMicrosoftAuthEnabled'
+  | 'isPasswordAuthEnabled'
+  | 'hasValidEnterpriseKey'
+  | 'subdomain'
+  | 'customDomain'
+  | 'workspaceUrls'
+  | 'metadataVersion'
 >;
 
 export const currentWorkspaceState = createState<CurrentWorkspace | null>({

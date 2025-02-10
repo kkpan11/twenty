@@ -3,25 +3,64 @@
   "$schema": "../../node_modules/nx/schemas/project-schema.json",
   "sourceRoot": "packages/twenty-ui/src",
   "projectType": "library",
+  "tags": ["scope:frontend"],
   "targets": {
     "build": {
-      "executor": "@nx/vite:build",
-      "outputs": ["{options.outputPath}"],
+      "dependsOn": ["^build", "generateBarrels"]
+    },
+    "generateBarrels": {
+      "executor": "nx:run-commands",
+      "cache": true,
+      "inputs": ["production", "{projectRoot}/scripts/generateBarrels.js"],
+      "outputs": ["{projectRoot}/src/index.ts", "{projectRoot}/src/*/index.ts"],
       "options": {
-        "outputPath": "packages/twenty-ui/dist"
+        "command": "node {projectRoot}/scripts/generateBarrels.js"
       }
     },
     "lint": {
-      "executor": "@nx/eslint:lint",
-      "outputs": ["{options.outputFile}"]
-    },
-    "test": {
-      "executor": "@nx/jest:jest",
-      "outputs": ["{workspaceRoot}/coverage/{projectRoot}"],
       "options": {
-        "jestConfig": "packages/twenty-ui/jest.config.ts"
+        "lintFilePatterns": [
+          "{projectRoot}/src/**/*.{ts,tsx,json}",
+          "{projectRoot}/package.json"
+        ]
+      },
+      "configurations": {
+        "fix": {}
       }
+    },
+    "fmt": {
+      "options": {
+        "files": "src"
+      },
+      "configurations": {
+        "fix": {}
+      }
+    },
+    "test": {},
+    "typecheck": {},
+    "storybook:build": {
+      "configurations": {
+        "test": {}
+      }
+    },
+    "storybook:serve:dev": {
+      "options": { "port": 6007 }
+    },
+    "storybook:serve:static": {
+      "options": {
+        "buildTarget": "twenty-ui:storybook:build",
+        "port": 6007
+      },
+      "configurations": {
+        "test": {}
+      }
+    },
+    "storybook:coverage": {},
+    "storybook:test": {
+      "options": { "port": 6007 }
+    },
+    "storybook:serve-and-test:static": {
+      "options": { "port": 6007 }
     }
-  },
-  "tags": []
+  }
 }

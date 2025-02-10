@@ -2,52 +2,55 @@ import { isUndefined } from '@sniptt/guards';
 
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { mapObjectMetadataToGraphQLQuery } from '@/object-metadata/utils/mapObjectMetadataToGraphQLQuery';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
+import {
+  FieldMetadataType,
+  RelationDefinitionType,
+} from '~/generated-metadata/graphql';
 
 import { FieldMetadataItem } from '../types/FieldMetadataItem';
 
+// TODO: change ObjectMetadataItems mock before refactoring with relationDefinition computed field
 export const mapFieldMetadataToGraphQLQuery = ({
   objectMetadataItems,
   field,
-  relationFieldDepth = 0,
-  relationFieldEagerLoad,
+  relationrecordFields,
+  computeReferences = false,
 }: {
   objectMetadataItems: ObjectMetadataItem[];
-  field: Pick<
-    FieldMetadataItem,
-    'name' | 'type' | 'toRelationMetadata' | 'fromRelationMetadata'
-  >;
-  relationFieldDepth?: number;
-  relationFieldEagerLoad?: Record<string, any>;
+  field: Pick<FieldMetadataItem, 'name' | 'type' | 'relationDefinition'>;
+  relationrecordFields?: Record<string, any>;
+  computeReferences?: boolean;
 }): any => {
   const fieldType = field.type;
 
-  const fieldIsSimpleValue = (
-    [
-      'UUID',
-      'TEXT',
-      'PHONE',
-      'DATE_TIME',
-      'EMAIL',
-      'NUMBER',
-      'BOOLEAN',
-      'RATING',
-      'SELECT',
-      'POSITION',
-    ] as FieldMetadataType[]
-  ).includes(fieldType);
+  const fieldIsSimpleValue = [
+    FieldMetadataType.UUID,
+    FieldMetadataType.TEXT,
+    FieldMetadataType.DATE_TIME,
+    FieldMetadataType.DATE,
+    FieldMetadataType.NUMBER,
+    FieldMetadataType.BOOLEAN,
+    FieldMetadataType.RATING,
+    FieldMetadataType.SELECT,
+    FieldMetadataType.MULTI_SELECT,
+    FieldMetadataType.POSITION,
+    FieldMetadataType.RAW_JSON,
+    FieldMetadataType.RICH_TEXT,
+    FieldMetadataType.ARRAY,
+  ].includes(fieldType);
 
   if (fieldIsSimpleValue) {
     return field.name;
-  } else if (
-    fieldType === 'RELATION' &&
-    field.toRelationMetadata?.relationType === 'ONE_TO_MANY' &&
-    relationFieldDepth > 0
+  }
+
+  if (
+    fieldType === FieldMetadataType.RELATION &&
+    field.relationDefinition?.direction === RelationDefinitionType.MANY_TO_ONE
   ) {
     const relationMetadataItem = objectMetadataItems.find(
       (objectMetadataItem) =>
         objectMetadataItem.id ===
-        (field.toRelationMetadata as any)?.fromObjectMetadata?.id,
+        field.relationDefinition?.targetObjectMetadata.id,
     );
 
     if (isUndefined(relationMetadataItem)) {
@@ -58,18 +61,20 @@ export const mapFieldMetadataToGraphQLQuery = ({
 ${mapObjectMetadataToGraphQLQuery({
   objectMetadataItems,
   objectMetadataItem: relationMetadataItem,
-  eagerLoadedRelations: relationFieldEagerLoad,
-  depth: relationFieldDepth - 1,
+  recordGqlFields: relationrecordFields,
+  computeReferences: computeReferences,
+  isRootLevel: false,
 })}`;
-  } else if (
-    fieldType === 'RELATION' &&
-    field.fromRelationMetadata?.relationType === 'ONE_TO_MANY' &&
-    relationFieldDepth > 0
+  }
+
+  if (
+    fieldType === FieldMetadataType.RELATION &&
+    field.relationDefinition?.direction === RelationDefinitionType.ONE_TO_MANY
   ) {
     const relationMetadataItem = objectMetadataItems.find(
       (objectMetadataItem) =>
         objectMetadataItem.id ===
-        (field.fromRelationMetadata as any)?.toObjectMetadata?.id,
+        field.relationDefinition?.targetObjectMetadata.id,
     );
 
     if (isUndefined(relationMetadataItem)) {
@@ -82,30 +87,80 @@ ${mapObjectMetadataToGraphQLQuery({
     node ${mapObjectMetadataToGraphQLQuery({
       objectMetadataItems,
       objectMetadataItem: relationMetadataItem,
-      eagerLoadedRelations: relationFieldEagerLoad,
-      depth: relationFieldDepth - 1,
+      recordGqlFields: relationrecordFields,
+      computeReferences,
+      isRootLevel: false,
     })}
   }
 }`;
-  } else if (fieldType === 'LINK') {
+  }
+
+  if (fieldType === FieldMetadataType.LINKS) {
     return `${field.name}
 {
-  label
-  url
+  primaryLinkUrl
+  primaryLinkLabel
+  secondaryLinks
 }`;
-  } else if (fieldType === 'CURRENCY') {
+  }
+
+  if (fieldType === FieldMetadataType.CURRENCY) {
     return `${field.name}
 {
   amountMicros
   currencyCode
 }
     `;
-  } else if (fieldType === 'FULL_NAME') {
+  }
+
+  if (fieldType === FieldMetadataType.FULL_NAME) {
     return `${field.name}
 {
   firstName
   lastName
 }`;
+  }
+
+  if (fieldType === FieldMetadataType.ADDRESS) {
+    return `${field.name}
+{
+  addressStreet1
+  addressStreet2
+  addressCity
+  addressState
+  addressCountry
+  addressPostcode
+  addressLat
+  addressLng
+}`;
+  }
+
+  if (fieldType === FieldMetadataType.ACTOR) {
+    return `${field.name}
+{
+    source
+    workspaceMemberId
+    name
+    context
+}`;
+  }
+
+  if (fieldType === FieldMetadataType.EMAILS) {
+    return `${field.name}
+{
+  primaryEmail
+  additionalEmails
+}`;
+  }
+
+  if (fieldType === FieldMetadataType.PHONES) {
+    return `${field.name}
+    {
+      primaryPhoneNumber
+      primaryPhoneCountryCode
+      primaryPhoneCallingCode
+      additionalPhones
+    }`;
   }
 
   return '';

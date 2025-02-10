@@ -1,21 +1,28 @@
-import { Hotkey } from 'react-hotkeys-hook/dist/types';
+import {
+  Hotkey,
+  OptionsOrDependencyArray,
+} from 'react-hotkeys-hook/dist/types';
 import { useRecoilCallback } from 'recoil';
 
 import { logDebug } from '~/utils/logDebug';
 
 import { internalHotkeysEnabledScopesState } from '../states/internal/internalHotkeysEnabledScopesState';
 
-const DEBUG_HOTKEY_SCOPE = false;
+export const DEBUG_HOTKEY_SCOPE = false;
 
-export const useScopedHotkeyCallback = () =>
-  useRecoilCallback(
+export const useScopedHotkeyCallback = (
+  dependencies?: OptionsOrDependencyArray,
+) => {
+  const dependencyArray = Array.isArray(dependencies) ? dependencies : [];
+
+  return useRecoilCallback(
     ({ snapshot }) =>
       ({
         callback,
         hotkeysEvent,
         keyboardEvent,
         scope,
-        preventDefault = true,
+        preventDefault,
       }: {
         keyboardEvent: KeyboardEvent;
         hotkeysEvent: Hotkey;
@@ -24,14 +31,13 @@ export const useScopedHotkeyCallback = () =>
         preventDefault?: boolean;
       }) => {
         const currentHotkeyScopes = snapshot
-          .getLoadable(internalHotkeysEnabledScopesState())
+          .getLoadable(internalHotkeysEnabledScopesState)
           .getValue();
 
         if (!currentHotkeyScopes.includes(scope)) {
-          // eslint-disable-next-line @nx/workspace-explicit-boolean-predicates-in-if
           if (DEBUG_HOTKEY_SCOPE) {
             logDebug(
-              `%cI can't call hotkey (${
+              `DEBUG: %cI can't call hotkey (${
                 hotkeysEvent.keys
               }) because I'm in scope [${scope}] and the active scopes are : [${currentHotkeyScopes.join(
                 ', ',
@@ -43,10 +49,9 @@ export const useScopedHotkeyCallback = () =>
           return;
         }
 
-        // eslint-disable-next-line @nx/workspace-explicit-boolean-predicates-in-if
         if (DEBUG_HOTKEY_SCOPE) {
           logDebug(
-            `%cI can call hotkey (${
+            `DEBUG: %cI can call hotkey (${
               hotkeysEvent.keys
             }) because I'm in scope [${scope}] and the active scopes are : [${currentHotkeyScopes.join(
               ', ',
@@ -55,7 +60,14 @@ export const useScopedHotkeyCallback = () =>
           );
         }
 
-        if (preventDefault) {
+        if (preventDefault === true) {
+          if (DEBUG_HOTKEY_SCOPE) {
+            logDebug(
+              `DEBUG: %cI prevent default for hotkey (${hotkeysEvent.keys})`,
+              'color: gray;',
+            );
+          }
+
           keyboardEvent.stopPropagation();
           keyboardEvent.preventDefault();
           keyboardEvent.stopImmediatePropagation();
@@ -63,5 +75,7 @@ export const useScopedHotkeyCallback = () =>
 
         return callback(keyboardEvent, hotkeysEvent);
       },
-    [],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    dependencyArray,
   );
+};

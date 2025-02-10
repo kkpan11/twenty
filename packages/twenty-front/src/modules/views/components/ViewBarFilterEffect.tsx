@@ -1,91 +1,82 @@
-import { useEffect } from 'react';
 import { isNonEmptyString } from '@sniptt/guards';
-import { useRecoilValue } from 'recoil';
+import { useEffect } from 'react';
 
-import { useFilterDropdown } from '@/object-record/object-filter-dropdown/hooks/useFilterDropdown';
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
-import { useViewScopedStates } from '@/views/hooks/internal/useViewScopedStates';
-import { isDefined } from '~/utils/isDefined';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentStateV2';
+
+import { fieldMetadataItemUsedInDropdownComponentSelector } from '@/object-record/object-filter-dropdown/states/fieldMetadataItemUsedInDropdownComponentSelector';
+import { objectFilterDropdownSelectedOptionValuesComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownSelectedOptionValuesComponentState';
+import { objectFilterDropdownSelectedRecordIdsComponentState } from '@/object-record/object-filter-dropdown/states/objectFilterDropdownSelectedRecordIdsComponentState';
+import { useGetCurrentView } from '@/views/hooks/useGetCurrentView';
+import { jsonRelationFilterValueSchema } from '@/views/view-filter-value/validation-schemas/jsonRelationFilterValueSchema';
+import { simpleRelationFilterValueSchema } from '@/views/view-filter-value/validation-schemas/simpleRelationFilterValueSchema';
+import { isDefined } from 'twenty-shared';
 
 type ViewBarFilterEffectProps = {
   filterDropdownId: string;
-  onFilterSelect?: ((filter: Filter) => void) | undefined;
 };
 
 export const ViewBarFilterEffect = ({
   filterDropdownId,
-  onFilterSelect,
 }: ViewBarFilterEffectProps) => {
-  const { availableFilterDefinitionsState, currentViewFiltersState } =
-    useViewScopedStates();
+  const { currentViewWithCombinedFiltersAndSorts } = useGetCurrentView();
 
-  const availableFilterDefinitions = useRecoilValue(
-    availableFilterDefinitionsState,
+  const fieldMetadataItemUsedInDropdown = useRecoilComponentValueV2(
+    fieldMetadataItemUsedInDropdownComponentSelector,
+    filterDropdownId,
   );
-  const {
-    setAvailableFilterDefinitions,
-    setOnFilterSelect,
-    filterDefinitionUsedInDropdown,
-    setObjectFilterDropdownSelectedRecordIds,
-    setObjectFilterDropdownSelectedOptionValues,
-    isObjectFilterDropdownUnfolded,
-  } = useFilterDropdown({ filterDropdownId });
+
+  const setObjectFilterDropdownSelectedRecordIds = useSetRecoilComponentStateV2(
+    objectFilterDropdownSelectedRecordIdsComponentState,
+    filterDropdownId,
+  );
+
+  const setObjectFilterDropdownSelectedOptionValues =
+    useSetRecoilComponentStateV2(
+      objectFilterDropdownSelectedOptionValuesComponentState,
+      filterDropdownId,
+    );
 
   useEffect(() => {
-    if (isDefined(availableFilterDefinitions)) {
-      setAvailableFilterDefinitions(availableFilterDefinitions);
-    }
+    if (fieldMetadataItemUsedInDropdown?.type === 'RELATION') {
+      const viewFilterUsedInDropdown =
+        currentViewWithCombinedFiltersAndSorts?.viewFilters.find(
+          (filter) =>
+            filter.fieldMetadataId === fieldMetadataItemUsedInDropdown?.id,
+        );
 
-    if (isDefined(onFilterSelect)) {
-      setOnFilterSelect(() => onFilterSelect);
-    }
-  }, [
-    availableFilterDefinitions,
-    onFilterSelect,
-    setAvailableFilterDefinitions,
-    setOnFilterSelect,
-  ]);
+      const { selectedRecordIds } = jsonRelationFilterValueSchema
+        .catch({
+          isCurrentWorkspaceMemberSelected: false,
+          selectedRecordIds: simpleRelationFilterValueSchema.parse(
+            viewFilterUsedInDropdown?.value,
+          ),
+        })
+        .parse(viewFilterUsedInDropdown?.value);
 
-  const currentViewFilters = useRecoilValue(currentViewFiltersState);
+      setObjectFilterDropdownSelectedRecordIds(selectedRecordIds);
+    } else if (
+      isDefined(fieldMetadataItemUsedInDropdown) &&
+      ['SELECT', 'MULTI_SELECT'].includes(fieldMetadataItemUsedInDropdown.type)
+    ) {
+      const viewFilterUsedInDropdown =
+        currentViewWithCombinedFiltersAndSorts?.viewFilters.find(
+          (filter) =>
+            filter.fieldMetadataId === fieldMetadataItemUsedInDropdown?.id,
+        );
 
-  useEffect(() => {
-    if (filterDefinitionUsedInDropdown?.type === 'RELATION') {
-      const viewFilterUsedInDropdown = currentViewFilters.find(
-        (filter) =>
-          filter.fieldMetadataId ===
-          filterDefinitionUsedInDropdown.fieldMetadataId,
-      );
-
-      const viewFilterSelectedRecordIds = isNonEmptyString(
+      const viewFilterSelectedRecords = isNonEmptyString(
         viewFilterUsedInDropdown?.value,
       )
         ? JSON.parse(viewFilterUsedInDropdown.value)
         : [];
-
-      setObjectFilterDropdownSelectedRecordIds(viewFilterSelectedRecordIds);
-    } else if (filterDefinitionUsedInDropdown?.type === 'SELECT') {
-      const viewFilterUsedInDropdown = currentViewFilters.find(
-        (filter) =>
-          filter.fieldMetadataId ===
-          filterDefinitionUsedInDropdown.fieldMetadataId,
-      );
-
-      const viewFilterSelectedOptionValues = isNonEmptyString(
-        viewFilterUsedInDropdown?.value,
-      )
-        ? JSON.parse(viewFilterUsedInDropdown.value)
-        : [];
-
-      setObjectFilterDropdownSelectedOptionValues(
-        viewFilterSelectedOptionValues,
-      );
+      setObjectFilterDropdownSelectedOptionValues(viewFilterSelectedRecords);
     }
   }, [
-    filterDefinitionUsedInDropdown,
-    currentViewFilters,
+    fieldMetadataItemUsedInDropdown,
     setObjectFilterDropdownSelectedRecordIds,
-    isObjectFilterDropdownUnfolded,
     setObjectFilterDropdownSelectedOptionValues,
+    currentViewWithCombinedFiltersAndSorts,
   ]);
 
   return <></>;

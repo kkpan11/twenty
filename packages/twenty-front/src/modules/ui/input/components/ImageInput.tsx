@@ -1,15 +1,12 @@
-import React from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { Trans, useLingui } from '@lingui/react/macro';
 
-import {
-  IconFileUpload,
-  IconTrash,
-  IconUpload,
-  IconX,
-} from '@/ui/display/icon';
-import { Button } from '@/ui/input/button/components/Button';
-import { isDefined } from '~/utils/isDefined';
+import { isNonEmptyString } from '@sniptt/guards';
+import React from 'react';
+import { getImageAbsoluteURI, isDefined } from 'twenty-shared';
+import { Button, IconPhotoUp, IconTrash, IconUpload, IconX } from 'twenty-ui';
+import { REACT_APP_SERVER_BASE_URL } from '~/config';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -19,8 +16,8 @@ const StyledContainer = styled.div`
 const StyledPicture = styled.button<{ withPicture: boolean }>`
   align-items: center;
   background: ${({ theme, disabled }) =>
-    disabled ? theme.background.secondary : theme.background.tertiary};
-  border: none;
+    disabled ? theme.background.secondary : theme.background.transparent.light};
+  border: 1px solid ${({ theme }) => theme.border.color.medium};
   border-radius: ${({ theme }) => theme.border.radius.sm};
   color: ${({ theme }) => theme.font.color.light};
   cursor: ${({ disabled }) => (disabled ? 'not-allowed' : 'pointer')};
@@ -39,6 +36,10 @@ const StyledPicture = styled.button<{ withPicture: boolean }>`
     width: 100%;
   }
 
+  &:hover svg {
+    color: ${({ theme }) => theme.font.color.tertiary};
+  }
+
   ${({ theme, withPicture, disabled }) => {
     if ((withPicture || disabled) === true) {
       return '';
@@ -46,7 +47,7 @@ const StyledPicture = styled.button<{ withPicture: boolean }>`
 
     return `
       &:hover {
-        background: ${theme.background.quaternary};
+        background: ${theme.background.transparent.medium};
       }
     `;
   }};
@@ -56,16 +57,17 @@ const StyledContent = styled.div`
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: space-between;
+  justify-content: start;
   margin-left: ${({ theme }) => theme.spacing(4)};
+
+  gap: ${({ theme }) => theme.spacing(3)};
 `;
 
 const StyledButtonContainer = styled.div`
   display: flex;
   flex-direction: row;
-  > * + * {
-    margin-left: ${({ theme }) => theme.spacing(2)};
-  }
+
+  gap: ${({ theme }) => theme.spacing(2)};
 `;
 
 const StyledText = styled.span`
@@ -104,26 +106,34 @@ export const ImageInput = ({
   disabled = false,
   className,
 }: ImageInputProps) => {
+  const { t } = useLingui();
   const theme = useTheme();
   const hiddenFileInput = React.useRef<HTMLInputElement>(null);
   const onUploadButtonClick = () => {
     hiddenFileInput.current?.click();
   };
 
+  const pictureURI = isNonEmptyString(picture)
+    ? getImageAbsoluteURI({
+        imageUrl: picture,
+        baseUrl: REACT_APP_SERVER_BASE_URL,
+      })
+    : null;
+
   return (
     <StyledContainer className={className}>
       <StyledPicture
-        withPicture={!!picture}
+        withPicture={!!pictureURI}
         disabled={disabled}
         onClick={onUploadButtonClick}
       >
-        {picture ? (
+        {pictureURI ? (
           <img
-            src={picture || '/images/default-profile-picture.png'}
+            src={pictureURI || '/images/default-profile-picture.png'}
             alt="profile"
           />
         ) : (
-          <IconFileUpload size={theme.icon.size.md} />
+          <IconPhotoUp size={theme.icon.size.lg} />
         )}
       </StyledPicture>
       <StyledContent>
@@ -143,31 +153,28 @@ export const ImageInput = ({
               Icon={IconX}
               onClick={onAbort}
               variant="secondary"
-              title="Abort"
-              disabled={!picture || disabled}
-              fullWidth
+              title={t`Abort`}
+              disabled={!pictureURI || disabled}
             />
           ) : (
             <Button
               Icon={IconUpload}
               onClick={onUploadButtonClick}
               variant="secondary"
-              title="Upload"
+              title={t`Upload`}
               disabled={disabled}
-              fullWidth
             />
           )}
           <Button
             Icon={IconTrash}
             onClick={onRemove}
             variant="secondary"
-            title="Remove"
-            disabled={!picture || disabled}
-            fullWidth
+            title={t`Remove`}
+            disabled={!pictureURI || disabled}
           />
         </StyledButtonContainer>
         <StyledText>
-          We support your best PNGs, JPEGs and GIFs portraits under 10MB
+          <Trans>We support your square PNGs, JPEGs and GIFs under 10MB</Trans>
         </StyledText>
         {errorMessage && <StyledErrorText>{errorMessage}</StyledErrorText>}
       </StyledContent>

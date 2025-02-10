@@ -1,37 +1,47 @@
 import { getOperationName } from '@apollo/client/utilities';
 import { Meta, StoryObj } from '@storybook/react';
 import { fireEvent, within } from '@storybook/test';
-import { graphql, HttpResponse } from 'msw';
+import { HttpResponse, graphql } from 'msw';
 
-import { AppPath } from '@/types/AppPath';
 import { GET_CURRENT_USER } from '@/users/graphql/queries/getCurrentUser';
 import {
   PageDecorator,
   PageDecoratorArgs,
 } from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
-import { mockedOnboardingUsersData } from '~/testing/mock-data/users';
 
+import { AppPath } from '@/types/AppPath';
 import { SignInUp } from '../SignInUp';
 
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/Auth/SignInUp',
   component: SignInUp,
   decorators: [PageDecorator],
-  args: { routePath: AppPath.SignIn },
+  args: { routePath: AppPath.SignInUp },
   parameters: {
     msw: {
       handlers: [
         graphql.query(getOperationName(GET_CURRENT_USER) ?? '', () => {
           return HttpResponse.json({
-            data: {
-              currentUser: mockedOnboardingUsersData[0],
-            },
+            data: null,
+            errors: [
+              {
+                message: 'Unauthorized',
+                extensions: {
+                  code: 'UNAUTHENTICATED',
+                  response: {
+                    statusCode: 401,
+                    message: 'Unauthorized',
+                  },
+                },
+              },
+            ],
           });
         }),
         graphqlMocks.handlers,
       ],
     },
+    cookie: '',
   },
 };
 
@@ -43,7 +53,7 @@ export const Default: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
     const continueWithEmailButton = await canvas.findByText(
-      'Continue With Email',
+      'Continue with Email',
     );
 
     await fireEvent.click(continueWithEmailButton);

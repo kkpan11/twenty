@@ -1,45 +1,86 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconComponent, IconX } from 'twenty-ui';
 
-import { IconX } from '@/ui/display/icon/index';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-
-type StyledChipProps = {
-  isSort?: boolean;
-};
-
-const StyledChip = styled.div<StyledChipProps>`
+const StyledChip = styled.div<{ variant: SortOrFilterChipVariant }>`
   align-items: center;
-  background-color: ${({ theme }) => theme.accent.quaternary};
-  border: 1px solid ${({ theme }) => theme.accent.tertiary};
+  background-color: ${({ theme, variant }) => {
+    switch (variant) {
+      case 'danger':
+        return theme.background.danger;
+      case 'default':
+      default:
+        return theme.accent.quaternary;
+    }
+  }};
+  border: 1px solid
+    ${({ theme, variant }) => {
+      switch (variant) {
+        case 'danger':
+          return theme.border.color.danger;
+        case 'default':
+        default:
+          return theme.accent.tertiary;
+      }
+    }};
   border-radius: 4px;
-  color: ${({ theme }) => theme.color.blue};
+  color: ${({ theme, variant }) => {
+    switch (variant) {
+      case 'danger':
+        return theme.color.red;
+      case 'default':
+      default:
+        return theme.color.blue;
+    }
+  }};
+  height: 26px;
+  box-sizing: border-box;
   cursor: pointer;
   display: flex;
   flex-direction: row;
   flex-shrink: 0;
   font-size: ${({ theme }) => theme.font.size.sm};
-  font-weight: ${({ isSort }) => (isSort ? 'bold' : 'normal')};
-  padding: ${({ theme }) => theme.spacing(1) + ' ' + theme.spacing(2)};
+  font-weight: ${({ theme }) => theme.font.weight.medium};
+  padding: ${({ theme }) => theme.spacing(0.5)};
+  padding-left: ${({ theme }) => theme.spacing(1)};
+  column-gap: ${({ theme }) => theme.spacing(1)};
   user-select: none;
+  white-space: nowrap;
+
+  margin-left: ${({ theme }) => theme.spacing(2)};
 `;
 
 const StyledIcon = styled.div`
   align-items: center;
   display: flex;
-  margin-right: ${({ theme }) => theme.spacing(1)};
 `;
 
-const StyledDelete = styled.div`
+const StyledDelete = styled.button<{ variant: SortOrFilterChipVariant }>`
+  box-sizing: border-box;
+  height: 20px;
+  width: 20px;
+  display: flex;
+  justify-content: center;
   align-items: center;
   cursor: pointer;
-  display: flex;
   font-size: ${({ theme }) => theme.font.size.sm};
-  margin-left: ${({ theme }) => theme.spacing(2)};
-  margin-top: 1px;
   user-select: none;
+  padding: 0;
+  margin: 0;
+  background: none;
+  border: none;
+  color: inherit;
+
   &:hover {
-    background-color: ${({ theme }) => theme.accent.secondary};
+    background-color: ${({ theme, variant }) => {
+      switch (variant) {
+        case 'danger':
+          return theme.color.red20;
+        case 'default':
+        default:
+          return theme.accent.secondary;
+      }
+    }};
     border-radius: ${({ theme }) => theme.border.radius.sm};
   }
 `;
@@ -48,22 +89,24 @@ const StyledLabelKey = styled.div`
   font-weight: ${({ theme }) => theme.font.weight.medium};
 `;
 
+export type SortOrFilterChipVariant = 'default' | 'danger';
+
 type SortOrFilterChipProps = {
   labelKey?: string;
   labelValue: string;
+  variant?: SortOrFilterChipVariant;
   Icon?: IconComponent;
   onRemove: () => void;
   onClick?: () => void;
-  isSort?: boolean;
   testId?: string;
 };
 
 export const SortOrFilterChip = ({
   labelKey,
   labelValue,
+  variant = 'default',
   Icon,
   onRemove,
-  isSort,
   testId,
   onClick,
 }: SortOrFilterChipProps) => {
@@ -75,7 +118,7 @@ export const SortOrFilterChip = ({
   };
 
   return (
-    <StyledChip isSort={isSort} onClick={onClick}>
+    <StyledChip onClick={onClick} variant={variant}>
       {Icon && (
         <StyledIcon>
           <Icon size={theme.icon.size.sm} />
@@ -84,6 +127,7 @@ export const SortOrFilterChip = ({
       {labelKey && <StyledLabelKey>{labelKey}</StyledLabelKey>}
       {labelValue}
       <StyledDelete
+        variant={variant}
         onClick={handleDeleteClick}
         data-testid={'remove-icon-' + testId}
       >

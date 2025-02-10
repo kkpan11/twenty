@@ -1,14 +1,21 @@
 import { css } from '@emotion/react';
 import styled from '@emotion/styled';
 
+import { useFieldFocus } from '@/object-record/record-field/hooks/useFieldFocus';
+import { useIsFieldEmpty } from '@/object-record/record-field/hooks/useIsFieldEmpty';
+import { useIsFieldInputOnly } from '@/object-record/record-field/hooks/useIsFieldInputOnly';
+import {
+  RecordInlineCellContextProps,
+  useRecordInlineCellContext,
+} from '@/object-record/record-inline-cell/components/RecordInlineCellContext';
+import { RecordInlineCellButton } from '@/object-record/record-inline-cell/components/RecordInlineCellEditButton';
+import { useLingui } from '@lingui/react/macro';
+
 const StyledRecordInlineCellNormalModeOuterContainer = styled.div<
   Pick<
-    RecordInlineCellDisplayModeProps,
-    | 'isDisplayModeContentEmpty'
-    | 'disableHoverEffect'
-    | 'isDisplayModeFixHeight'
-    | 'isHovered'
-  >
+    RecordInlineCellContextProps,
+    'isDisplayModeFixHeight' | 'disableHoverEffect'
+  > & { isHovered?: boolean }
 >`
   align-items: center;
   border-radius: ${({ theme }) => theme.border.radius.sm};
@@ -17,8 +24,8 @@ const StyledRecordInlineCellNormalModeOuterContainer = styled.div<
     isDisplayModeFixHeight ? '16px' : 'auto'};
   min-height: 16px;
   overflow: hidden;
-  padding: ${({ theme }) => theme.spacing(1)};
-
+  padding-right: ${({ theme }) => theme.spacing(1)};
+  padding-left: ${({ theme }) => theme.spacing(1)};
   ${(props) => {
     if (props.isHovered === true) {
       return css`
@@ -33,15 +40,15 @@ const StyledRecordInlineCellNormalModeOuterContainer = styled.div<
 `;
 
 const StyledRecordInlineCellNormalModeInnerContainer = styled.div`
+  align-content: center;
   align-items: center;
   color: ${({ theme }) => theme.font.color.primary};
-  font-size: 'inherit';
-  font-weight: 'inherit';
+  padding-top: 3px;
+  padding-bottom: 3px;
 
   height: fit-content;
 
   overflow: hidden;
-
   text-overflow: ellipsis;
   white-space: nowrap;
 `;
@@ -50,34 +57,47 @@ const StyledEmptyField = styled.div`
   color: ${({ theme }) => theme.font.color.light};
 `;
 
-type RecordInlineCellDisplayModeProps = {
-  isDisplayModeContentEmpty?: boolean;
-  disableHoverEffect?: boolean;
-  isDisplayModeFixHeight?: boolean;
-  isHovered?: boolean;
-  emptyPlaceholder?: string;
-};
-
 export const RecordInlineCellDisplayMode = ({
   children,
-  isDisplayModeContentEmpty,
-  disableHoverEffect,
-  isDisplayModeFixHeight,
-  emptyPlaceholder = 'Empty',
-  isHovered,
-}: React.PropsWithChildren<RecordInlineCellDisplayModeProps>) => (
-  <StyledRecordInlineCellNormalModeOuterContainer
-    isDisplayModeContentEmpty={isDisplayModeContentEmpty}
-    disableHoverEffect={disableHoverEffect}
-    isDisplayModeFixHeight={isDisplayModeFixHeight}
-    isHovered={isHovered}
-  >
-    <StyledRecordInlineCellNormalModeInnerContainer>
-      {isDisplayModeContentEmpty || !children ? (
-        <StyledEmptyField>{emptyPlaceholder}</StyledEmptyField>
-      ) : (
-        children
-      )}
-    </StyledRecordInlineCellNormalModeInnerContainer>
-  </StyledRecordInlineCellNormalModeOuterContainer>
-);
+}: React.PropsWithChildren<unknown>) => {
+  const { isFocused } = useFieldFocus();
+
+  const { t } = useLingui();
+
+  const {
+    editModeContentOnly,
+
+    showLabel,
+    label,
+    buttonIcon,
+  } = useRecordInlineCellContext();
+
+  const isDisplayModeContentEmpty = useIsFieldEmpty();
+  const showEditButton =
+    buttonIcon &&
+    isFocused &&
+    !isDisplayModeContentEmpty &&
+    !editModeContentOnly;
+
+  const isFieldInputOnly = useIsFieldInputOnly();
+
+  const shouldDisplayEditModeOnFocus = isFocused && isFieldInputOnly;
+
+  const emptyPlaceHolder = showLabel ? t`Empty` : label;
+
+  return (
+    <>
+      <StyledRecordInlineCellNormalModeOuterContainer isHovered={isFocused}>
+        <StyledRecordInlineCellNormalModeInnerContainer>
+          {(isDisplayModeContentEmpty && !shouldDisplayEditModeOnFocus) ||
+          !children ? (
+            <StyledEmptyField>{emptyPlaceHolder}</StyledEmptyField>
+          ) : (
+            children
+          )}
+        </StyledRecordInlineCellNormalModeInnerContainer>
+      </StyledRecordInlineCellNormalModeOuterContainer>
+      {showEditButton && <RecordInlineCellButton Icon={buttonIcon} />}
+    </>
+  );
+};

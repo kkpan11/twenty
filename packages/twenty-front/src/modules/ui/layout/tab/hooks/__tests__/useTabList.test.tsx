@@ -1,6 +1,6 @@
 import { act } from 'react-dom/test-utils';
 import { renderHook } from '@testing-library/react';
-import { RecoilRoot, useRecoilValue } from 'recoil';
+import { RecoilRoot } from 'recoil';
 
 import { useTabList } from '../useTabList';
 
@@ -8,12 +8,9 @@ describe('useTabList', () => {
   it('Should update the activeTabId state', async () => {
     const { result } = renderHook(
       () => {
-        const { getActiveTabIdState, setActiveTabId } =
-          useTabList('TEST_TAB_LIST_ID');
-        const activeTabId = useRecoilValue(getActiveTabIdState());
+        const { activeTabId, setActiveTabId } = useTabList('TEST_TAB_LIST_ID');
 
         return {
-          getActiveTabIdState: getActiveTabIdState,
           activeTabId,
           setActiveTabId: setActiveTabId,
         };
@@ -22,7 +19,6 @@ describe('useTabList', () => {
         wrapper: RecoilRoot,
       },
     );
-    expect(result.current.getActiveTabIdState).toBeInstanceOf(Function);
     expect(result.current.setActiveTabId).toBeInstanceOf(Function);
     expect(result.current.activeTabId).toBeNull();
 

@@ -1,10 +1,10 @@
-import { ChangeEvent } from 'react';
 import styled from '@emotion/styled';
+import { ChangeEvent } from 'react';
 
-import { StyledInput } from '@/ui/field/input/components/TextInput';
-import { ComputeNodeDimensions } from '@/ui/utilities/dimensions/components/ComputeNodeDimensions';
+import { StyledTextInput as UIStyledTextInput } from '@/ui/field/input/components/TextInput';
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 
+import { ComputeNodeDimensions } from 'twenty-ui';
 import { InputHotkeyScope } from '../types/InputHotkeyScope';
 
 export type EntityTitleDoubleTextInputProps = {
@@ -23,7 +23,7 @@ const StyledDoubleTextContainer = styled.div`
   text-align: center;
 `;
 
-const StyledTextInput = styled(StyledInput)`
+const StyledTextInput = styled(UIStyledTextInput)`
   margin: 0 ${({ theme }) => theme.spacing(0.5)};
   padding: 0;
   width: ${({ width }) => (width ? `${width}px` : 'auto')};

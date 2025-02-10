@@ -1,7 +1,7 @@
-import { MemoryRouter, useLocation } from 'react-router-dom';
 import { ApolloError, gql } from '@apollo/client';
 import { act, renderHook } from '@testing-library/react';
 import fetchMock, { enableFetchMocks } from 'jest-fetch-mock';
+import { MemoryRouter, useLocation } from 'react-router-dom';
 import { RecoilRoot } from 'recoil';
 
 import { useApolloFactory } from '../useApolloFactory';
@@ -22,7 +22,7 @@ jest.mock('react-router-dom', () => {
 const Wrapper = ({ children }: { children: React.ReactNode }) => (
   <RecoilRoot>
     <MemoryRouter
-      initialEntries={['/sign-in', '/verify', '/opportunities']}
+      initialEntries={['/welcome', '/verify', '/opportunities']}
       initialIndex={2}
     >
       {children}
@@ -44,7 +44,7 @@ describe('useApolloFactory', () => {
     expect(res).toHaveProperty('query');
   });
 
-  it('should navigate to /sign-in on unauthenticated error', async () => {
+  it('should navigate to /welcome on unauthenticated error', async () => {
     const errors = [
       {
         extensions: {
@@ -77,8 +77,8 @@ describe('useApolloFactory', () => {
       await act(async () => {
         await result.current.factory.mutate({
           mutation: gql`
-            mutation CreateEvent($type: String!, $data: JSON!) {
-              createEvent(type: $type, data: $data) {
+            mutation Track($type: String!, $sessionId: String!, $data: JSON!) {
+              track(type: $type, sessionId: $sessionId, data: $data) {
                 success
               }
             }
@@ -90,7 +90,7 @@ describe('useApolloFactory', () => {
       expect((error as ApolloError).message).toBe('Error message not found.');
 
       expect(mockNavigate).toHaveBeenCalled();
-      expect(mockNavigate).toHaveBeenCalledWith('/sign-in');
+      expect(mockNavigate).toHaveBeenCalledWith('/welcome');
     }
   });
 });

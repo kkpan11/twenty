@@ -7,7 +7,7 @@ import {
   RelationComparatorResult,
 } from 'src/engine/workspace-manager/workspace-sync-metadata/interfaces/comparator.interface';
 
-import { RelationMetadataEntity } from 'src/engine-metadata/relation-metadata/relation-metadata.entity';
+import { RelationMetadataEntity } from 'src/engine/metadata-modules/relation-metadata/relation-metadata.entity';
 import { transformMetadataForComparison } from 'src/engine/workspace-manager/workspace-sync-metadata/comparators/utils/transform-metadata-for-comparison.util';
 
 const relationPropertiesToIgnore = ['createdAt', 'updatedAt'];
@@ -54,13 +54,14 @@ export class WorkspaceRelationComparator {
 
     for (const difference of relationMetadataDifference) {
       switch (difference.type) {
-        case 'CREATE':
+        case 'CREATE': {
           results.push({
             action: ComparatorAction.CREATE,
             object: difference.value,
           });
           break;
-        case 'REMOVE':
+        }
+        case 'REMOVE': {
           if (difference.path[difference.path.length - 1] !== 'id') {
             results.push({
               action: ComparatorAction.DELETE,
@@ -68,7 +69,8 @@ export class WorkspaceRelationComparator {
             });
           }
           break;
-        case 'CHANGE':
+        }
+        case 'CHANGE': {
           const fieldName = difference.path[0];
           const property = difference.path[difference.path.length - 1];
 
@@ -101,6 +103,7 @@ export class WorkspaceRelationComparator {
             },
           });
           break;
+        }
       }
     }
 
