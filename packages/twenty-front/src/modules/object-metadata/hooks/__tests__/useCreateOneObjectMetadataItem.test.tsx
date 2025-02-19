@@ -1,16 +1,19 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
 import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
 
 import { useCreateOneObjectMetadataItem } from '@/object-metadata/hooks/useCreateOneObjectMetadataItem';
 
-import { TestApolloMetadataClientProvider } from '../__mocks__/ApolloMetadataClientProvider';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 import {
+  findManyViewsQuery,
   query,
   responseData,
   variables,
 } from '../__mocks__/useCreateOneObjectMetadataItem';
+
+import {
+  query as findManyObjectMetadataItemsQuery,
+  responseData as findManyObjectMetadataItemsResponseData,
+} from '../__mocks__/useFindManyObjectMetadataItems';
 
 const mocks = [
   {
@@ -24,17 +27,41 @@ const mocks = [
       },
     })),
   },
+  {
+    request: {
+      query: findManyObjectMetadataItemsQuery,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: findManyObjectMetadataItemsResponseData,
+    })),
+  },
+  {
+    request: {
+      query: findManyViewsQuery,
+      variables: {},
+    },
+    result: jest.fn(() => ({
+      data: {
+        views: {
+          __typename: 'ViewConnection',
+          totalCount: 0,
+          pageInfo: {
+            __typename: 'PageInfo',
+            hasNextPage: false,
+            startCursor: '',
+            endCursor: '',
+          },
+          edges: [],
+        },
+      },
+    })),
+  },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      <TestApolloMetadataClientProvider>
-        {children}
-      </TestApolloMetadataClientProvider>
-    </MockedProvider>
-  </RecoilRoot>
-);
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: mocks,
+});
 
 describe('useCreateOneObjectMetadataItem', () => {
   it('should work as expected', async () => {

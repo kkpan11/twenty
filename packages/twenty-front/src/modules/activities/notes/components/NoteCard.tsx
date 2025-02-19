@@ -1,16 +1,13 @@
-import { useMemo } from 'react';
-import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 
 import { useOpenActivityRightDrawer } from '@/activities/hooks/useOpenActivityRightDrawer';
 import { ActivityTargetsInlineCell } from '@/activities/inline-cell/components/ActivityTargetsInlineCell';
 import { Note } from '@/activities/types/Note';
 import { getActivityPreview } from '@/activities/utils/getActivityPreview';
-import {
-  FieldContext,
-  GenericFieldContextType,
-} from '@/object-record/record-field/contexts/FieldContext';
-import { IconComment } from '@/ui/display/icon';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { useFieldContext } from '@/object-record/hooks/useFieldContext';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { FeatureFlagKey } from '~/generated-metadata/graphql';
 
 const StyledCard = styled.div<{ isSingleNote: boolean }>`
   align-items: flex-start;
@@ -33,8 +30,9 @@ const StyledCardDetailsContainer = styled.div`
   gap: ${({ theme }) => theme.spacing(2)};
   height: calc(100% - 45px);
   justify-content: start;
-  padding: ${({ theme }) => theme.spacing(2)};
-  width: calc(100% - ${({ theme }) => theme.spacing(4)});
+  padding: ${({ theme }) => theme.spacing(4)};
+  width: calc(100% - ${({ theme }) => theme.spacing(8)});
+  box-sizing: border-box;
 `;
 
 const StyledNoteTitle = styled.div`
@@ -46,7 +44,6 @@ const StyledCardContent = styled.div`
   align-self: stretch;
   color: ${({ theme }) => theme.font.color.secondary};
   line-break: anywhere;
-  margin-top: ${({ theme }) => theme.spacing(2)};
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: pre-line;
@@ -66,14 +63,6 @@ const StyledFooter = styled.div`
   width: calc(100% - ${({ theme }) => theme.spacing(4)});
 `;
 
-const StyledCommentIcon = styled.div`
-  align-items: center;
-  color: ${({ theme }) => theme.font.color.light};
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(1)};
-  margin-left: ${({ theme }) => theme.spacing(2)};
-`;
-
 export const NoteCard = ({
   note,
   isSingleNote,
@@ -81,34 +70,42 @@ export const NoteCard = ({
   note: Note;
   isSingleNote: boolean;
 }) => {
-  const theme = useTheme();
-  const openActivityRightDrawer = useOpenActivityRightDrawer();
-  const body = getActivityPreview(note.body);
-
-  const fieldContext = useMemo(
-    () => ({ recoilScopeId: note?.id ?? '' }),
-    [note?.id],
+  const openActivityRightDrawer = useOpenActivityRightDrawer({
+    objectNameSingular: CoreObjectNameSingular.Note,
+  });
+  const isRichTextV2Enabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsRichTextV2Enabled,
+  );
+  const body = getActivityPreview(
+    isRichTextV2Enabled ? (note?.bodyV2?.blocknote ?? null) : note?.body,
   );
 
+  const { FieldContextProvider: NoteTargetsContextProvider } = useFieldContext({
+    objectNameSingular: CoreObjectNameSingular.Note,
+    objectRecordId: note.id,
+    fieldMetadataName: 'noteTargets',
+    fieldPosition: 0,
+  });
+
   return (
-    <FieldContext.Provider value={fieldContext as GenericFieldContextType}>
-      <StyledCard isSingleNote={isSingleNote}>
-        <StyledCardDetailsContainer
-          onClick={() => openActivityRightDrawer(note.id)}
-        >
-          <StyledNoteTitle>{note.title ?? 'Task Title'}</StyledNoteTitle>
-          <StyledCardContent>{body}</StyledCardContent>
-        </StyledCardDetailsContainer>
-        <StyledFooter>
-          <ActivityTargetsInlineCell activity={note} />
-          {note.comments && note.comments.length > 0 && (
-            <StyledCommentIcon>
-              <IconComment size={theme.icon.size.md} />
-              {note.comments.length}
-            </StyledCommentIcon>
-          )}
-        </StyledFooter>
-      </StyledCard>
-    </FieldContext.Provider>
+    <StyledCard isSingleNote={isSingleNote}>
+      <StyledCardDetailsContainer
+        onClick={() => openActivityRightDrawer(note.id)}
+      >
+        <StyledNoteTitle>{note.title ?? 'Task Title'}</StyledNoteTitle>
+        <StyledCardContent>{body}</StyledCardContent>
+      </StyledCardDetailsContainer>
+      <StyledFooter>
+        {NoteTargetsContextProvider && (
+          <NoteTargetsContextProvider>
+            <ActivityTargetsInlineCell
+              activity={note}
+              activityObjectNameSingular={CoreObjectNameSingular.Note}
+              readonly
+            />
+          </NoteTargetsContextProvider>
+        )}
+      </StyledFooter>
+    </StyledCard>
   );
 };

@@ -1,17 +1,27 @@
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-
+import { IconComponent } from 'twenty-ui';
 export enum CommandType {
   Navigate = 'Navigate',
   Create = 'Create',
+  StandardAction = 'StandardAction',
+  WorkflowRun = 'WorkflowRun',
+  Fallback = 'Fallback',
+}
+
+export enum CommandScope {
+  Global = 'Global',
+  RecordSelection = 'RecordSelection',
+  Object = 'Object',
 }
 
 export type Command = {
   id: string;
-  to: string;
+  to?: string;
   label: string;
-  type: CommandType.Navigate | CommandType.Create;
+  description?: string;
+  type?: CommandType;
+  scope?: CommandScope;
   Icon?: IconComponent;
-  firstHotKey?: string;
-  secondHotKey?: string;
+  hotKeys?: string[];
   onCommandClick?: () => void;
+  shouldCloseCommandMenuOnClick?: boolean;
 };

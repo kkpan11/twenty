@@ -1,14 +1,23 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { OrderBy } from '@/object-metadata/types/OrderBy';
-import { OrderByField } from '@/object-metadata/types/OrderByField';
-import { getObjectOrderByField } from '@/object-metadata/utils/getObjectOrderByField';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+
+import { getOrderByFieldForObjectMetadataItem } from '@/object-metadata/utils/getObjectOrderByField';
+import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { OrderBy } from '@/types/OrderBy';
 
 export const useGetObjectOrderByField = ({
-  objectMetadataItem,
+  objectNameSingular,
 }: {
-  objectMetadataItem: ObjectMetadataItem;
+  objectNameSingular: string;
 }) => {
-  return (orderBy: OrderBy): OrderByField => {
-    return getObjectOrderByField(objectMetadataItem, orderBy);
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular,
+  });
+
+  const getObjectOrderByField = (
+    orderBy: OrderBy,
+  ): RecordGqlOperationOrderBy => {
+    return getOrderByFieldForObjectMetadataItem(objectMetadataItem, orderBy);
   };
+
+  return { getObjectOrderByField };
 };

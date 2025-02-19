@@ -1,11 +1,10 @@
-import { Inject } from '@nestjs/common';
-
 import { Command, CommandRunner } from 'nest-commander';
 
 import { dataSeedDemoWorkspaceCronPattern } from 'src/database/commands/data-seed-demo-workspace/crons/data-seed-demo-workspace-cron-pattern';
 import { DataSeedDemoWorkspaceJob } from 'src/database/commands/data-seed-demo-workspace/jobs/data-seed-demo-workspace.job';
-import { MessageQueue } from 'src/integrations/message-queue/message-queue.constants';
-import { MessageQueueService } from 'src/integrations/message-queue/services/message-queue.service';
+import { InjectMessageQueue } from 'src/engine/core-modules/message-queue/decorators/message-queue.decorator';
+import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { MessageQueueService } from 'src/engine/core-modules/message-queue/services/message-queue.service';
 
 @Command({
   name: 'workspace-seed-demo:cron:start',
@@ -13,17 +12,21 @@ import { MessageQueueService } from 'src/integrations/message-queue/services/mes
 })
 export class StartDataSeedDemoWorkspaceCronCommand extends CommandRunner {
   constructor(
-    @Inject(MessageQueue.cronQueue)
+    @InjectMessageQueue(MessageQueue.cronQueue)
     private readonly messageQueueService: MessageQueueService,
   ) {
     super();
   }
 
   async run(): Promise<void> {
-    await this.messageQueueService.addCron<undefined>(
-      DataSeedDemoWorkspaceJob.name,
-      undefined,
-      dataSeedDemoWorkspaceCronPattern,
-    );
+    await this.messageQueueService.addCron<undefined>({
+      jobName: DataSeedDemoWorkspaceJob.name,
+      data: undefined,
+      options: {
+        repeat: {
+          pattern: dataSeedDemoWorkspaceCronPattern,
+        },
+      },
+    });
   }
 }

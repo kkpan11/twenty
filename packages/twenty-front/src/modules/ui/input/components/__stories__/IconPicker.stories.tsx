@@ -1,16 +1,34 @@
+import { useArgs } from '@storybook/preview-api';
 import { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
+import { ComponentDecorator } from 'twenty-ui';
 
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
 import { IconsProviderDecorator } from '~/testing/decorators/IconsProviderDecorator';
-import { sleep } from '~/testing/sleep';
+import { sleep } from '~/utils/sleep';
 
-import { IconPicker } from '../IconPicker';
+import { IconPicker, IconPickerProps } from '../IconPicker';
+
+type RenderProps = IconPickerProps;
+const Render = (args: RenderProps) => {
+  const [{ selectedIconKey }, updateArgs] = useArgs();
+
+  return (
+    <IconPicker
+      // eslint-disable-next-line react/jsx-props-no-spreading
+      {...args}
+      onChange={({ iconKey }) => {
+        updateArgs({ selectedIconKey: iconKey });
+      }}
+      selectedIconKey={selectedIconKey}
+    />
+  );
+};
 
 const meta: Meta<typeof IconPicker> = {
   title: 'UI/Input/IconPicker/IconPicker',
   component: IconPicker,
   decorators: [IconsProviderDecorator, ComponentDecorator],
+  render: Render,
 };
 
 export default meta;
@@ -18,39 +36,45 @@ type Story = StoryObj<typeof IconPicker>;
 
 export const Default: Story = {};
 
+export const WithOpen: Story = {
+  play: async () => {
+    const canvas = within(document.body);
+
+    const iconPickerButton = await canvas.findByRole('button', {
+      name: 'Click to select icon (no icon selected)',
+    });
+
+    await userEvent.click(iconPickerButton);
+  },
+};
+
 export const WithSelectedIcon: Story = {
   args: { selectedIconKey: 'IconCalendarEvent' },
 };
 
-export const WithOpen: Story = {
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
-
-    const iconPickerButton = await canvas.findByRole('button');
-
-    userEvent.click(iconPickerButton);
-  },
-};
-
 export const WithOpenAndSelectedIcon: Story = {
-  args: { selectedIconKey: 'IconCalendarEvent' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  ...WithSelectedIcon,
+  play: async () => {
+    const canvas = within(document.body);
 
-    const iconPickerButton = await canvas.findByRole('button');
+    const iconPickerButton = await canvas.findByRole('button', {
+      name: 'Click to select icon (selected: IconCalendarEvent)',
+    });
 
-    userEvent.click(iconPickerButton);
+    await userEvent.click(iconPickerButton);
   },
 };
 
 export const WithSearch: Story = {
-  args: { selectedIconKey: 'IconBuildingSkyscraper' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  ...WithSelectedIcon,
+  play: async () => {
+    const canvas = within(document.body);
 
-    const iconPickerButton = await canvas.findByRole('button');
+    const iconPickerButton = await canvas.findByRole('button', {
+      name: 'Click to select icon (selected: IconCalendarEvent)',
+    });
 
-    userEvent.click(iconPickerButton);
+    await userEvent.click(iconPickerButton);
 
     const searchInput = await canvas.findByRole('textbox');
 
@@ -58,7 +82,7 @@ export const WithSearch: Story = {
 
     await sleep(100);
 
-    const searchedIcon = canvas.getByRole('button', {
+    const searchedIcon = await canvas.findByRole('button', {
       name: 'Icon Building Skyscraper',
     });
 
@@ -67,13 +91,15 @@ export const WithSearch: Story = {
 };
 
 export const WithSearchAndClose: Story = {
-  args: { selectedIconKey: 'IconBuildingSkyscraper' },
-  play: async ({ canvasElement }) => {
-    const canvas = within(canvasElement);
+  ...WithSelectedIcon,
+  play: async () => {
+    const canvas = within(document.body);
 
-    const iconPickerButton = await canvas.findByRole('button');
+    let iconPickerButton = await canvas.findByRole('button', {
+      name: 'Click to select icon (selected: IconCalendarEvent)',
+    });
 
-    userEvent.click(iconPickerButton);
+    await userEvent.click(iconPickerButton);
 
     let searchInput = await canvas.findByRole('textbox');
 
@@ -81,19 +107,25 @@ export const WithSearchAndClose: Story = {
 
     await sleep(100);
 
-    const searchedIcon = canvas.getByRole('button', {
+    const searchedIcon = await canvas.findByRole('button', {
       name: 'Icon Building Skyscraper',
     });
 
     expect(searchedIcon).toBeInTheDocument();
 
-    userEvent.click(searchedIcon);
+    await userEvent.click(searchedIcon);
 
-    await sleep(100);
+    await sleep(500);
+
+    expect(searchedIcon).not.toBeInTheDocument();
+
+    iconPickerButton = await canvas.findByRole('button', {
+      name: 'Click to select icon (selected: IconBuildingSkyscraper)',
+    });
 
     userEvent.click(iconPickerButton);
 
-    await sleep(100);
+    await sleep(500);
 
     searchInput = await canvas.findByRole('textbox');
 

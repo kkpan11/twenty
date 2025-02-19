@@ -1,8 +1,9 @@
-import { ReactNode } from 'react';
 import styled from '@emotion/styled';
+import { ReactNode } from 'react';
 
-import { Card } from '@/ui/layout/card/components/Card';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
+import { StyledFormCardTitle } from '@/settings/data-model/fields/components/StyledFormCardTitle';
+import { Trans } from '@lingui/react/macro';
+import { Card, CardContent } from 'twenty-ui';
 
 type SettingsDataModelPreviewFormCardProps = {
   className?: string;
@@ -14,14 +15,6 @@ const StyledPreviewContainer = styled(CardContent)`
   background-color: ${({ theme }) => theme.background.transparent.lighter};
 `;
 
-const StyledTitle = styled.h3`
-  color: ${({ theme }) => theme.font.color.extraLight};
-  font-size: ${({ theme }) => theme.font.size.sm};
-  font-weight: ${({ theme }) => theme.font.weight.medium};
-  margin: 0;
-  margin-bottom: ${({ theme }) => theme.spacing(4)};
-`;
-
 const StyledFormContainer = styled(CardContent)`
   padding: 0;
 `;
@@ -31,9 +24,11 @@ export const SettingsDataModelPreviewFormCard = ({
   preview,
   form,
 }: SettingsDataModelPreviewFormCardProps) => (
-  <Card className={className} fullWidth>
+  <Card className={className} fullWidth rounded>
     <StyledPreviewContainer divider={!!form}>
-      <StyledTitle>Preview</StyledTitle>
+      <StyledFormCardTitle>
+        <Trans>Preview</Trans>
+      </StyledFormCardTitle>
       {preview}
     </StyledPreviewContainer>
     {!!form && <StyledFormContainer>{form}</StyledFormContainer>}

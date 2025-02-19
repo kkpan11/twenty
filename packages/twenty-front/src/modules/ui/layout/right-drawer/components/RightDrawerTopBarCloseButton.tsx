@@ -1,5 +1,4 @@
-import { IconChevronsRight } from '@/ui/display/icon/index';
-import { LightIconButton } from '@/ui/input/button/components/LightIconButton';
+import { IconX, LightIconButton } from 'twenty-ui';
 
 import { useRightDrawer } from '../hooks/useRightDrawer';
 
@@ -12,7 +11,7 @@ export const RightDrawerTopBarCloseButton = () => {
 
   return (
     <LightIconButton
-      Icon={IconChevronsRight}
+      Icon={IconX}
       onClick={handleButtonClick}
       size="medium"
       accent="tertiary"

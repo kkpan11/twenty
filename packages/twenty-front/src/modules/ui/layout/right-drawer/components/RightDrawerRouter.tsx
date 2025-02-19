@@ -1,21 +1,22 @@
 import styled from '@emotion/styled';
-import { useRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 
+import { RightDrawerCalendarEvent } from '@/activities/calendar/right-drawer/components/RightDrawerCalendarEvent';
+import { RightDrawerAIChat } from '@/activities/copilot/right-drawer/components/RightDrawerAIChat';
 import { RightDrawerEmailThread } from '@/activities/emails/right-drawer/components/RightDrawerEmailThread';
-import { RightDrawerEmailThreadTopBar } from '@/activities/emails/right-drawer/components/RightDrawerEmailThreadTopBar';
-import { RightDrawerCreateActivity } from '@/activities/right-drawer/components/create/RightDrawerCreateActivity';
-import { RightDrawerEditActivity } from '@/activities/right-drawer/components/edit/RightDrawerEditActivity';
+import { RightDrawerRecord } from '@/object-record/record-right-drawer/components/RightDrawerRecord';
+import { isRightDrawerMinimizedState } from '@/ui/layout/right-drawer/states/isRightDrawerMinimizedState';
 
-import { RightDrawerActivityTopBar } from '../../../../activities/right-drawer/components/RightDrawerActivityTopBar';
+import { RightDrawerContainer } from '@/ui/layout/right-drawer/components/RightDrawerContainer';
+import { RightDrawerTopBar } from '@/ui/layout/right-drawer/components/RightDrawerTopBar';
+import { ComponentByRightDrawerPage } from '@/ui/layout/right-drawer/types/ComponentByRightDrawerPage';
+import { RightDrawerWorkflowEditStep } from '@/workflow/workflow-steps/components/RightDrawerWorkflowEditStep';
+import { RightDrawerWorkflowViewStep } from '@/workflow/workflow-steps/components/RightDrawerWorkflowViewStep';
+import { RightDrawerWorkflowSelectAction } from '@/workflow/workflow-steps/workflow-actions/components/RightDrawerWorkflowSelectAction';
+import { RightDrawerWorkflowSelectTriggerType } from '@/workflow/workflow-trigger/components/RightDrawerWorkflowSelectTriggerType';
+import { isDefined } from 'twenty-shared';
 import { rightDrawerPageState } from '../states/rightDrawerPageState';
 import { RightDrawerPages } from '../types/RightDrawerPages';
-
-const StyledRightDrawerPage = styled.div`
-  display: flex;
-  flex-direction: column;
-  height: 100%;
-  width: 100%;
-`;
 
 const StyledRightDrawerBody = styled.div`
   display: flex;
@@ -23,37 +24,44 @@ const StyledRightDrawerBody = styled.div`
   height: calc(
     100vh - ${({ theme }) => theme.spacing(14)} - 1px
   ); // (-1 for border)
-  overflow: auto;
+  //overflow: auto;
   position: relative;
 `;
 
+const RIGHT_DRAWER_PAGES_CONFIG: ComponentByRightDrawerPage = {
+  [RightDrawerPages.ViewEmailThread]: <RightDrawerEmailThread />,
+  [RightDrawerPages.ViewCalendarEvent]: <RightDrawerCalendarEvent />,
+  [RightDrawerPages.ViewRecord]: <RightDrawerRecord />,
+  [RightDrawerPages.Copilot]: <RightDrawerAIChat />,
+  [RightDrawerPages.WorkflowStepSelectTriggerType]: (
+    <RightDrawerWorkflowSelectTriggerType />
+  ),
+  [RightDrawerPages.WorkflowStepSelectAction]: (
+    <RightDrawerWorkflowSelectAction />
+  ),
+  [RightDrawerPages.WorkflowStepEdit]: <RightDrawerWorkflowEditStep />,
+  [RightDrawerPages.WorkflowStepView]: <RightDrawerWorkflowViewStep />,
+};
+
 export const RightDrawerRouter = () => {
-  const [rightDrawerPage] = useRecoilState(rightDrawerPageState());
+  const [rightDrawerPage] = useRecoilState(rightDrawerPageState);
 
-  let page = <></>;
-  let topBar = <></>;
+  const rightDrawerPageComponent = isDefined(rightDrawerPage) ? (
+    RIGHT_DRAWER_PAGES_CONFIG[rightDrawerPage]
+  ) : (
+    <></>
+  );
 
-  switch (rightDrawerPage) {
-    case RightDrawerPages.CreateActivity:
-      page = <RightDrawerCreateActivity />;
-      topBar = <RightDrawerActivityTopBar />;
-      break;
-    case RightDrawerPages.EditActivity:
-      page = <RightDrawerEditActivity />;
-      topBar = <RightDrawerActivityTopBar />;
-      break;
-    case RightDrawerPages.ViewEmailThread:
-      page = <RightDrawerEmailThread />;
-      topBar = <RightDrawerEmailThreadTopBar />;
-      break;
-    default:
-      break;
-  }
+  const isRightDrawerMinimized = useRecoilValue(isRightDrawerMinimizedState);
 
   return (
-    <StyledRightDrawerPage>
-      {topBar}
-      <StyledRightDrawerBody>{page}</StyledRightDrawerBody>
-    </StyledRightDrawerPage>
+    <RightDrawerContainer>
+      <RightDrawerTopBar />
+      {!isRightDrawerMinimized && (
+        <StyledRightDrawerBody>
+          {rightDrawerPageComponent}
+        </StyledRightDrawerBody>
+      )}
+    </RightDrawerContainer>
   );
 };

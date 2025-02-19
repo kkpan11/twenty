@@ -1,13 +1,13 @@
-import { useEffect } from 'react';
 import { Decorator, Meta, StoryObj } from '@storybook/react';
 import { expect, fn, userEvent, waitFor, within } from '@storybook/test';
+import { useEffect } from 'react';
 
 import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
+import { isDefined } from 'twenty-shared';
 import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
 
+import { FieldContextProvider } from '@/object-record/record-field/meta-types/components/FieldContextProvider';
 import { FieldRatingValue } from '../../../../types/FieldMetadata';
-import { FieldContextProvider } from '../../../__stories__/FieldContextProvider';
 import { useRatingField } from '../../../hooks/useRatingField';
 import { RatingFieldInput, RatingFieldInputProps } from '../RatingFieldInput';
 
@@ -27,11 +27,11 @@ const RatingFieldValueSetterEffect = ({
 
 type RatingFieldInputWithContextProps = RatingFieldInputProps & {
   value: FieldRatingValue;
-  entityId?: string;
+  recordId?: string;
 };
 
 const RatingFieldInputWithContext = ({
-  entityId,
+  recordId,
   value,
   onSubmit,
 }: RatingFieldInputWithContextProps) => {
@@ -46,13 +46,14 @@ const RatingFieldInputWithContext = ({
       fieldDefinition={{
         fieldMetadataId: 'rating',
         label: 'Rating',
-        type: FieldMetadataType.Rating,
+        type: FieldMetadataType.RATING,
         iconName: 'Icon123',
         metadata: {
           fieldName: 'Rating',
+          objectMetadataNameSingular: 'person',
         },
       }}
-      entityId={entityId}
+      recordId={recordId}
     >
       <RatingFieldValueSetterEffect value={value} />
       <RatingFieldInput onSubmit={onSubmit} />

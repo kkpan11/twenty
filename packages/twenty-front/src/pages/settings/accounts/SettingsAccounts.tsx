@@ -1,49 +1,67 @@
 import { useRecoilValue } from 'recoil';
+import { H2Title, Section } from 'twenty-ui';
 
 import { ConnectedAccount } from '@/accounts/types/ConnectedAccount';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
+import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
 import { useFindManyRecords } from '@/object-record/hooks/useFindManyRecords';
-import { SettingsAccountsConnectedAccountsSection } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsSection';
-import { SettingsAccountsEmailsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsEmailsBlocklistSection';
+import { SettingsAccountLoader } from '@/settings/accounts/components/SettingsAccountLoader';
+import { SettingsAccountsBlocklistSection } from '@/settings/accounts/components/SettingsAccountsBlocklistSection';
+import { SettingsAccountsConnectedAccountsListCard } from '@/settings/accounts/components/SettingsAccountsConnectedAccountsListCard';
 import { SettingsAccountsSettingsSection } from '@/settings/accounts/components/SettingsAccountsSettingsSection';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
-import { IconSettings } from '@/ui/display/icon';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Breadcrumb } from '@/ui/navigation/bread-crumb/components/Breadcrumb';
-import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
-import { SettingsAccountLoader } from '~/pages/settings/accounts/SettingsAccountLoader';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { useLingui } from '@lingui/react/macro';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
 export const SettingsAccounts = () => {
-  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState());
+  const { t } = useLingui();
+  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
+
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
+  });
 
   const { records: accounts, loading } = useFindManyRecords<ConnectedAccount>({
-    objectNameSingular: 'connectedAccount',
+    objectNameSingular: CoreObjectNameSingular.ConnectedAccount,
     filter: {
       accountOwnerId: {
         eq: currentWorkspaceMember?.id,
       },
     },
+    recordGqlFields: generateDepthOneRecordGqlFields({ objectMetadataItem }),
   });
 
-  const isBlocklistEnabled = useIsFeatureEnabled('IS_BLOCKLIST_ENABLED');
-
   return (
-    <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
-      <SettingsPageContainer
-        style={
-          loading
-            ? { height: '100%', boxSizing: 'border-box', width: '100%' }
-            : {}
-        }
-      >
-        <Breadcrumb links={[{ children: 'Accounts' }]} />
-
+    <SubMenuTopBarContainer
+      title={t`Account`}
+      links={[
+        {
+          children: t`User`,
+          href: getSettingsPath(SettingsPath.ProfilePage),
+        },
+        { children: t`Account` },
+      ]}
+    >
+      <SettingsPageContainer>
         {loading ? (
           <SettingsAccountLoader />
         ) : (
           <>
-            <SettingsAccountsConnectedAccountsSection accounts={accounts} />
-            {isBlocklistEnabled && <SettingsAccountsEmailsBlocklistSection />}
+            <Section>
+              <H2Title
+                title={t`Connected accounts`}
+                description={t`Manage your internet accounts.`}
+              />
+              <SettingsAccountsConnectedAccountsListCard
+                accounts={accounts}
+                loading={loading}
+              />
+            </Section>
+            <SettingsAccountsBlocklistSection />
             <SettingsAccountsSettingsSection />
           </>
         )}

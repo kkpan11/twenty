@@ -1,17 +1,24 @@
-import { FieldMetadata } from '@/object-record/record-field/types/FieldMetadata';
-import { ColumnDefinition } from '@/object-record/record-table/types/ColumnDefinition';
+import { RecordTableCellContextValue } from '@/object-record/record-table/contexts/RecordTableCellContext';
+import { RecordTableRowContextValue } from '@/object-record/record-table/contexts/RecordTableRowContext';
+import { RecordTableRowDraggableContextValue } from '@/object-record/record-table/contexts/RecordTableRowDraggableContext';
+import { FieldMetadataType } from '~/generated/graphql';
 
-export const recordTableRow = {
+export const recordTableRowContextValue: RecordTableRowContextValue = {
   rowIndex: 2,
   isSelected: false,
   recordId: 'recordId',
   pathToShowPage: '/',
+  objectNameSingular: 'objectNameSingular',
+  isPendingRow: false,
+  inView: true,
 };
 
-export const recordTableCell: {
-  columnDefinition: ColumnDefinition<FieldMetadata>;
-  columnIndex: number;
-} = {
+export const recordTableRowDraggableContextValue: RecordTableRowDraggableContextValue = {
+  dragHandleProps: {} as any,
+  isDragging: false,
+};
+
+export const recordTableCellContextValue: RecordTableCellContextValue = {
   columnIndex: 3,
   columnDefinition: {
     size: 1,
@@ -19,10 +26,16 @@ export const recordTableCell: {
     fieldMetadataId: 'fieldMetadataId',
     label: 'label',
     iconName: 'iconName',
-    type: 'TEXT',
+    type: FieldMetadataType.TEXT,
     metadata: {
       placeHolder: 'placeHolder',
       fieldName: 'fieldName',
     },
   },
+  cellPosition: {
+    row: 2,
+    column: 3,
+  },
+  hasSoftFocus: false,
+  isInEditMode: false,
 };

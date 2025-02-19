@@ -1,21 +1,26 @@
-import { ReactNode } from 'react';
-import { MockedProvider } from '@apollo/client/testing';
-import { act, renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
+import { renderHook, waitFor } from '@testing-library/react';
 
+import { getRecordFromCache } from '@/object-record/cache/utils/getRecordFromCache';
+import { updateRecordFromCache } from '@/object-record/cache/utils/updateRecordFromCache';
+import { generateDepthOneRecordGqlFields } from '@/object-record/graphql/utils/generateDepthOneRecordGqlFields';
 import {
+  personIds,
+  personRecords,
   query,
   responseData,
   variables,
 } from '@/object-record/hooks/__mocks__/useDeleteManyRecords';
 import { useDeleteManyRecords } from '@/object-record/hooks/useDeleteManyRecords';
-
-const people = [
-  'a7286b9a-c039-4a89-9567-2dfa7953cda9',
-  '37faabcd-cb39-4a0a-8618-7e3fda9afca0',
-];
-
-const mocks = [
+import { useRefetchAggregateQueries } from '@/object-record/hooks/useRefetchAggregateQueries';
+import { ObjectRecord } from '@/object-record/types/ObjectRecord';
+import { InMemoryCache } from '@apollo/client';
+import { MockedResponse } from '@apollo/client/testing';
+import { act } from 'react';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
+import { getPersonObjectMetadataItem } from '~/testing/mock-data/people';
+const getDefaultMocks = (
+  overrides?: Partial<MockedResponse>,
+): MockedResponse[] => [
   {
     request: {
       query,
@@ -26,32 +31,178 @@ const mocks = [
         deletePeople: responseData,
       },
     })),
+    ...overrides,
   },
 ];
 
-const Wrapper = ({ children }: { children: ReactNode }) => (
-  <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      {children}
-    </MockedProvider>
-  </RecoilRoot>
+jest.mock('@/object-record/hooks/useRefetchAggregateQueries');
+const mockRefetchAggregateQueries = jest.fn();
+(useRefetchAggregateQueries as jest.Mock).mockReturnValue({
+  refetchAggregateQueries: mockRefetchAggregateQueries,
+});
+const objectMetadataItem = getPersonObjectMetadataItem();
+const objectMetadataItems = [objectMetadataItem];
+const expectedCachedRecordsWithDeletedAt = personRecords.map(
+  (personRecord) => ({
+    ...personRecord,
+    deletedAt: expect.any(String),
+  }),
 );
-
 describe('useDeleteManyRecords', () => {
-  it('works as expected', async () => {
-    const { result } = renderHook(
-      () => useDeleteManyRecords({ objectNameSingular: 'person' }),
-      {
-        wrapper: Wrapper,
-      },
+  let cache: InMemoryCache;
+  const assertCachedRecordsMatch = (expectedRecords: ObjectRecord[]) => {
+    expectedRecords.forEach((expectedRecord) => {
+      const cachedRecord = getRecordFromCache({
+        cache,
+        objectMetadataItem,
+        objectMetadataItems,
+        recordId: expectedRecord.id,
+      });
+      expect(cachedRecord).not.toBeNull();
+      if (cachedRecord === null) throw new Error('Should never occur');
+      // TODO find a way to reverse assertion or be more strict
+      expect(expectedRecord).toMatchObject(cachedRecord);
+    });
+  };
+  const assertCachedRecordsIsNull = (recordIds: string[]) =>
+    recordIds.forEach((recordId) =>
+      expect(
+        getRecordFromCache({
+          cache,
+          objectMetadataItem,
+          objectMetadataItems,
+          recordId,
+        }),
+      ).toBeNull(),
     );
 
-    await act(async () => {
-      const res = await result.current.deleteManyRecords(people);
-      expect(res).toBeDefined();
-      expect(res).toHaveProperty('id');
+  beforeEach(() => {
+    jest.clearAllMocks();
+    cache = new InMemoryCache();
+  });
+
+  describe('A. Starting from empty cache ', () => {
+    it('1. Should handle optimistic behavior after many records deletion', async () => {
+      const apolloMocks = getDefaultMocks();
+      const { result } = renderHook(
+        () => useDeleteManyRecords({ objectNameSingular: 'person' }),
+        {
+          wrapper: getJestMetadataAndApolloMocksWrapper({
+            apolloMocks,
+            cache,
+          }),
+        },
+      );
+
+      await act(async () => {
+        const res = await result.current.deleteManyRecords({
+          recordIdsToDelete: personIds,
+        });
+        expect(res).toEqual(responseData);
+        assertCachedRecordsIsNull(personIds);
+      });
+
+      expect(apolloMocks[0].result).toHaveBeenCalled();
+      expect(mockRefetchAggregateQueries).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('B. Starting from filled cache', () => {
+    beforeEach(() => {
+      personRecords.forEach((record) =>
+        updateRecordFromCache({
+          cache,
+          objectMetadataItem,
+          objectMetadataItems,
+          record,
+          recordGqlFields: generateDepthOneRecordGqlFields({
+            objectMetadataItem,
+            record,
+          }),
+        }),
+      );
+    });
+    it('1. Should handle optimistic behavior after many successful records deletion', async () => {
+      const apolloMocks = getDefaultMocks();
+      const { result } = renderHook(
+        () => useDeleteManyRecords({ objectNameSingular: 'person' }),
+        {
+          wrapper: getJestMetadataAndApolloMocksWrapper({
+            apolloMocks,
+            cache,
+          }),
+        },
+      );
+
+      await act(async () => {
+        const res = await result.current.deleteManyRecords({
+          recordIdsToDelete: personIds,
+        });
+        expect(res).toEqual(responseData);
+        assertCachedRecordsMatch(expectedCachedRecordsWithDeletedAt);
+      });
+
+      expect(apolloMocks[0].result).toHaveBeenCalled();
+      expect(mockRefetchAggregateQueries).toHaveBeenCalledTimes(1);
     });
 
-    expect(mocks[0].result).toHaveBeenCalled();
+    it('2. Should handle optimistic behavior before send many record deletion', async () => {
+      const apolloMocks = getDefaultMocks();
+      const { result } = renderHook(
+        () => useDeleteManyRecords({ objectNameSingular: 'person' }),
+        {
+          wrapper: getJestMetadataAndApolloMocksWrapper({
+            apolloMocks: getDefaultMocks({
+              delay: Number.POSITIVE_INFINITY,
+            }),
+            cache,
+          }),
+        },
+      );
+
+      await act(async () => {
+        result.current.deleteManyRecords({
+          recordIdsToDelete: personIds,
+        });
+        await waitFor(() =>
+          assertCachedRecordsMatch(expectedCachedRecordsWithDeletedAt),
+        );
+      });
+
+      expect(apolloMocks[0].result).not.toHaveBeenCalled();
+      expect(mockRefetchAggregateQueries).not.toHaveBeenCalled();
+    });
+
+    it('3. Should rollback optimistic behavior after failing to delete many records', async () => {
+      const apolloMocks = getDefaultMocks();
+      const { result } = renderHook(
+        () => useDeleteManyRecords({ objectNameSingular: 'person' }),
+        {
+          wrapper: getJestMetadataAndApolloMocksWrapper({
+            apolloMocks: getDefaultMocks({
+              error: new Error('Internal server error'),
+            }),
+            cache,
+          }),
+        },
+      );
+
+      await act(async () => {
+        try {
+          await result.current.deleteManyRecords({
+            recordIdsToDelete: personIds,
+          });
+          fail('Should have thrown an error');
+        } catch (e) {
+          expect(e).toMatchInlineSnapshot(
+            `[ApolloError: Internal server error]`,
+          );
+          assertCachedRecordsMatch(personRecords);
+        }
+      });
+
+      expect(apolloMocks[0].result).not.toHaveBeenCalled();
+      expect(mockRefetchAggregateQueries).not.toHaveBeenCalled();
+    });
   });
 });

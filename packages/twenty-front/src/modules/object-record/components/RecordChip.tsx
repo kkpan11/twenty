@@ -1,42 +1,42 @@
-import * as React from 'react';
+import { AvatarChip, AvatarChipVariant } from 'twenty-ui';
 
-import { useMapToObjectRecordIdentifier } from '@/object-metadata/hooks/useMapToObjectRecordIdentifier';
-import { useObjectMetadataItemOnly } from '@/object-metadata/hooks/useObjectMetadataItemOnly';
+import { getLinkToShowPage } from '@/object-metadata/utils/getLinkToShowPage';
+import { useRecordChipData } from '@/object-record/hooks/useRecordChipData';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { EntityChip } from '@/ui/display/chip/components/EntityChip';
+import { MouseEvent } from 'react';
 
 export type RecordChipProps = {
   objectNameSingular: string;
   record: ObjectRecord;
-  maxWidth?: number;
   className?: string;
+  variant?: AvatarChipVariant;
 };
 
 export const RecordChip = ({
   objectNameSingular,
   record,
-  maxWidth,
   className,
+  variant,
 }: RecordChipProps) => {
-  const { objectMetadataItem } = useObjectMetadataItemOnly({
+  const { recordChipData } = useRecordChipData({
     objectNameSingular,
+    record,
   });
 
-  const mapToObjectRecordIdentifier = useMapToObjectRecordIdentifier({
-    objectMetadataItem,
-  });
-
-  const objectRecordIdentifier = mapToObjectRecordIdentifier(record);
+  const handleClick = (e: MouseEvent<Element>) => {
+    e.stopPropagation();
+  };
 
   return (
-    <EntityChip
-      entityId={record.id}
-      name={objectRecordIdentifier.name}
-      avatarType={objectRecordIdentifier.avatarType}
-      avatarUrl={objectRecordIdentifier.avatarUrl}
-      linkToEntity={objectRecordIdentifier.linkToShowPage}
-      maxWidth={maxWidth}
+    <AvatarChip
+      placeholderColorSeed={record.id}
+      name={recordChipData.name}
+      avatarType={recordChipData.avatarType}
+      avatarUrl={recordChipData.avatarUrl ?? ''}
       className={className}
+      variant={variant}
+      onClick={handleClick}
+      to={getLinkToShowPage(objectNameSingular, record)}
     />
   );
 };

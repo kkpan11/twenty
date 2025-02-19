@@ -1,37 +1,27 @@
-import { useState } from 'react';
-import { useQuery } from '@apollo/client';
 import styled from '@emotion/styled';
-import { useRecoilState } from 'recoil';
-
-import { EmailLoader } from '@/activities/emails/components/EmailLoader';
-import { EmailThreadFetchMoreLoader } from '@/activities/emails/components/EmailThreadFetchMoreLoader';
-import { EmailThreadPreview } from '@/activities/emails/components/EmailThreadPreview';
-import { TIMELINE_THREADS_DEFAULT_PAGE_SIZE } from '@/activities/emails/constants/Messaging';
-import { useEmailThreadStates } from '@/activities/emails/hooks/internal/useEmailThreadStates';
-import { getTimelineThreadsFromCompanyId } from '@/activities/emails/queries/getTimelineThreadsFromCompanyId';
-import { getTimelineThreadsFromPersonId } from '@/activities/emails/queries/getTimelineThreadsFromPersonId';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import {
-  H1Title,
-  H1TitleFontColor,
-} from '@/ui/display/typography/components/H1Title';
-import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
-import {
+  AnimatedPlaceholder,
   AnimatedPlaceholderEmptyContainer,
   AnimatedPlaceholderEmptySubTitle,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderEmptyTitle,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
-import { Card } from '@/ui/layout/card/components/Card';
-import { Section } from '@/ui/layout/section/components/Section';
-import { getScopeIdFromComponentId } from '@/ui/utilities/recoil-scope/utils/getScopeIdFromComponentId';
-import {
-  GetTimelineThreadsFromPersonIdQueryVariables,
-  TimelineThread,
-  TimelineThreadsWithTotal,
-} from '~/generated/graphql';
+  EMPTY_PLACEHOLDER_TRANSITION_PROPS,
+  H1Title,
+  H1TitleFontColor,
+  Section,
+} from 'twenty-ui';
+
+import { ActivityList } from '@/activities/components/ActivityList';
+import { CustomResolverFetchMoreLoader } from '@/activities/components/CustomResolverFetchMoreLoader';
+import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
+import { EmailThreadPreview } from '@/activities/emails/components/EmailThreadPreview';
+import { TIMELINE_THREADS_DEFAULT_PAGE_SIZE } from '@/activities/emails/constants/Messaging';
+import { getTimelineThreadsFromCompanyId } from '@/activities/emails/graphql/queries/getTimelineThreadsFromCompanyId';
+import { getTimelineThreadsFromPersonId } from '@/activities/emails/graphql/queries/getTimelineThreadsFromPersonId';
+import { useCustomResolver } from '@/activities/hooks/useCustomResolver';
+import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { TimelineThread, TimelineThreadsWithTotal } from '~/generated/graphql';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -52,106 +42,46 @@ const StyledEmailCount = styled.span`
 `;
 
 export const EmailThreads = ({
-  entity,
+  targetableObject,
 }: {
-  entity: ActivityTargetableObject;
+  targetableObject: ActivityTargetableObject;
 }) => {
-  const { enqueueSnackBar } = useSnackBar();
-
-  const { getEmailThreadsPageState } = useEmailThreadStates({
-    emailThreadScopeId: getScopeIdFromComponentId(entity.id),
-  });
-
-  const [emailThreadsPage, setEmailThreadsPage] = useRecoilState(
-    getEmailThreadsPageState(),
-  );
-
-  const [isFetchingMoreEmails, setIsFetchingMoreEmails] = useState(false);
-
-  const [threadQuery, queryName] =
-    entity.targetObjectNameSingular === CoreObjectNameSingular.Person
+  const [query, queryName] =
+    targetableObject.targetObjectNameSingular === CoreObjectNameSingular.Person
       ? [getTimelineThreadsFromPersonId, 'getTimelineThreadsFromPersonId']
       : [getTimelineThreadsFromCompanyId, 'getTimelineThreadsFromCompanyId'];
 
-  const threadQueryVariables = {
-    ...(entity.targetObjectNameSingular === CoreObjectNameSingular.Person
-      ? { personId: entity.id }
-      : { companyId: entity.id }),
-    page: 1,
-    pageSize: TIMELINE_THREADS_DEFAULT_PAGE_SIZE,
-  } as GetTimelineThreadsFromPersonIdQueryVariables;
+  const { data, firstQueryLoading, isFetchingMore, fetchMoreRecords } =
+    useCustomResolver<TimelineThreadsWithTotal>(
+      query,
+      queryName,
+      'timelineThreads',
+      targetableObject,
+      TIMELINE_THREADS_DEFAULT_PAGE_SIZE,
+    );
 
-  const {
-    data,
-    loading: firstQueryLoading,
-    fetchMore,
-  } = useQuery(threadQuery, {
-    variables: threadQueryVariables,
-    onError: (error) => {
-      enqueueSnackBar(error.message || 'Error loading email threads', {
-        variant: 'error',
-      });
-    },
-  });
+  const { totalNumberOfThreads, timelineThreads } = data?.[queryName] ?? {};
+  const hasMoreTimelineThreads =
+    timelineThreads && totalNumberOfThreads
+      ? timelineThreads?.length < totalNumberOfThreads
+      : false;
 
-  const fetchMoreRecords = async () => {
-    if (
-      emailThreadsPage.hasNextPage &&
-      !isFetchingMoreEmails &&
-      !firstQueryLoading
-    ) {
-      setIsFetchingMoreEmails(true);
-
-      await fetchMore({
-        variables: {
-          ...threadQueryVariables,
-          page: emailThreadsPage.pageNumber + 1,
-        },
-        updateQuery: (prev, { fetchMoreResult }) => {
-          if (!fetchMoreResult?.[queryName]?.timelineThreads?.length) {
-            setEmailThreadsPage((emailThreadsPage) => ({
-              ...emailThreadsPage,
-              hasNextPage: false,
-            }));
-            return {
-              [queryName]: {
-                ...prev?.[queryName],
-                timelineThreads: [
-                  ...(prev?.[queryName]?.timelineThreads ?? []),
-                ],
-              },
-            };
-          }
-
-          return {
-            [queryName]: {
-              ...prev?.[queryName],
-              timelineThreads: [
-                ...(prev?.[queryName]?.timelineThreads ?? []),
-                ...(fetchMoreResult?.[queryName]?.timelineThreads ?? []),
-              ],
-            },
-          };
-        },
-      });
-      setEmailThreadsPage((emailThreadsPage) => ({
-        ...emailThreadsPage,
-        pageNumber: emailThreadsPage.pageNumber + 1,
-      }));
-      setIsFetchingMoreEmails(false);
+  const handleLastRowVisible = async () => {
+    if (hasMoreTimelineThreads) {
+      await fetchMoreRecords();
     }
   };
 
-  const { totalNumberOfThreads, timelineThreads }: TimelineThreadsWithTotal =
-    data?.[queryName] ?? [];
-
   if (firstQueryLoading) {
-    return <EmailLoader />;
+    return <SkeletonLoader />;
   }
 
   if (!firstQueryLoading && !timelineThreads?.length) {
     return (
-      <AnimatedPlaceholderEmptyContainer>
+      <AnimatedPlaceholderEmptyContainer
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...EMPTY_PLACEHOLDER_TRANSITION_PROPS}
+      >
         <AnimatedPlaceholder type="emptyInbox" />
         <AnimatedPlaceholderEmptyTextContainer>
           <AnimatedPlaceholderEmptyTitle>
@@ -177,19 +107,15 @@ export const EmailThreads = ({
           fontColor={H1TitleFontColor.Primary}
         />
         {!firstQueryLoading && (
-          <Card>
-            {timelineThreads?.map((thread: TimelineThread, index: number) => (
-              <EmailThreadPreview
-                key={index}
-                divider={index < timelineThreads.length - 1}
-                thread={thread}
-              />
+          <ActivityList>
+            {timelineThreads?.map((thread: TimelineThread) => (
+              <EmailThreadPreview key={thread.id} thread={thread} />
             ))}
-          </Card>
+          </ActivityList>
         )}
-        <EmailThreadFetchMoreLoader
-          loading={isFetchingMoreEmails || firstQueryLoading}
-          onLastRowVisible={fetchMoreRecords}
+        <CustomResolverFetchMoreLoader
+          loading={isFetchingMore || firstQueryLoading}
+          onLastRowVisible={handleLastRowVisible}
         />
       </Section>
     </StyledContainer>

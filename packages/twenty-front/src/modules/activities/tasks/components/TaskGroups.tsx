@@ -1,69 +1,67 @@
 import styled from '@emotion/styled';
-import { useRecoilValue } from 'recoil';
-
-import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
-import { TASKS_TAB_LIST_COMPONENT_ID } from '@/activities/tasks/constants/TasksTabListComponentId';
-import { useTasks } from '@/activities/tasks/hooks/useTasks';
-import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
-import { IconPlus } from '@/ui/display/icon';
-import { Button } from '@/ui/input/button/components/Button';
-import AnimatedPlaceholder from '@/ui/layout/animated-placeholder/components/AnimatedPlaceholder';
 import {
+  AnimatedPlaceholder,
   AnimatedPlaceholderEmptyContainer,
   AnimatedPlaceholderEmptySubTitle,
   AnimatedPlaceholderEmptyTextContainer,
   AnimatedPlaceholderEmptyTitle,
-} from '@/ui/layout/animated-placeholder/components/EmptyPlaceholderStyled';
-import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
+  Button,
+  EMPTY_PLACEHOLDER_TRANSITION_PROPS,
+  IconPlus,
+} from 'twenty-ui';
 
+import { SkeletonLoader } from '@/activities/components/SkeletonLoader';
+import { useOpenCreateActivityDrawer } from '@/activities/hooks/useOpenCreateActivityDrawer';
+import { TASKS_TAB_LIST_COMPONENT_ID } from '@/activities/tasks/constants/TasksTabListComponentId';
+import { useTasks } from '@/activities/tasks/hooks/useTasks';
+import { ActivityTargetableObject } from '@/activities/types/ActivityTargetableEntity';
+import { Task } from '@/activities/types/Task';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { useTabList } from '@/ui/layout/tab/hooks/useTabList';
+import groupBy from 'lodash.groupby';
 import { AddTaskButton } from './AddTaskButton';
 import { TaskList } from './TaskList';
 
 const StyledContainer = styled.div`
   display: flex;
   flex-direction: column;
+  width: 100%;
 `;
 
 type TaskGroupsProps = {
   filterDropdownId?: string;
   targetableObjects?: ActivityTargetableObject[];
-  showAddButton?: boolean;
 };
 
-export const TaskGroups = ({
-  filterDropdownId,
-  targetableObjects,
-  showAddButton,
-}: TaskGroupsProps) => {
-  const {
-    todayOrPreviousTasks,
-    upcomingTasks,
-    unscheduledTasks,
-    completedTasks,
-    initialized,
-  } = useTasks({
-    filterDropdownId: filterDropdownId,
+export const TaskGroups = ({ targetableObjects }: TaskGroupsProps) => {
+  const { tasks, tasksLoading } = useTasks({
     targetableObjects: targetableObjects ?? [],
   });
 
-  const openCreateActivity = useOpenCreateActivityDrawer();
+  const openCreateActivity = useOpenCreateActivityDrawer({
+    activityObjectNameSingular: CoreObjectNameSingular.Task,
+  });
 
-  const { getActiveTabIdState } = useTabList(TASKS_TAB_LIST_COMPONENT_ID);
-  const activeTabId = useRecoilValue(getActiveTabIdState());
+  const { activeTabId } = useTabList(TASKS_TAB_LIST_COMPONENT_ID);
 
-  if (!initialized) {
-    return <></>;
+  const isLoading =
+    (activeTabId !== 'done' && tasksLoading) ||
+    (activeTabId === 'done' && tasksLoading);
+
+  const isTasksEmpty =
+    (activeTabId !== 'done' && tasks?.length === 0) ||
+    (activeTabId === 'done' && tasks?.length === 0);
+
+  if (isLoading && isTasksEmpty) {
+    return <SkeletonLoader />;
   }
 
-  if (
-    (activeTabId !== 'done' &&
-      todayOrPreviousTasks?.length === 0 &&
-      upcomingTasks?.length === 0 &&
-      unscheduledTasks?.length === 0) ||
-    (activeTabId === 'done' && completedTasks?.length === 0)
-  ) {
+  if (isTasksEmpty) {
     return (
-      <AnimatedPlaceholderEmptyContainer>
+      <AnimatedPlaceholderEmptyContainer
+        // eslint-disable-next-line react/jsx-props-no-spreading
+        {...EMPTY_PLACEHOLDER_TRANSITION_PROPS}
+      >
         <AnimatedPlaceholder type="noTask" />
         <AnimatedPlaceholderEmptyTextContainer>
           <AnimatedPlaceholderEmptyTitle>
@@ -79,7 +77,6 @@ export const TaskGroups = ({
           variant={'secondary'}
           onClick={() =>
             openCreateActivity({
-              type: 'Task',
               targetableObjects: targetableObjects ?? [],
             })
           }
@@ -88,51 +85,28 @@ export const TaskGroups = ({
     );
   }
 
+  const sortedTasksByStatus = Object.entries(
+    groupBy(tasks, ({ status }) => status),
+  ).sort(([statusA], [statusB]) => statusB.localeCompare(statusA));
+
+  const hasTodoStatus = sortedTasksByStatus.some(
+    ([status]) => status === 'TODO',
+  );
+
   return (
     <StyledContainer>
-      {activeTabId === 'done' ? (
+      {sortedTasksByStatus.map(([status, tasksByStatus]: [string, Task[]]) => (
         <TaskList
-          tasks={completedTasks ?? []}
+          key={status}
+          title={status}
+          tasks={tasksByStatus}
           button={
-            showAddButton && (
+            (status === 'TODO' || !hasTodoStatus) && (
               <AddTaskButton activityTargetableObjects={targetableObjects} />
             )
           }
         />
-      ) : (
-        <>
-          <TaskList
-            title="Today"
-            tasks={todayOrPreviousTasks ?? []}
-            button={
-              showAddButton && (
-                <AddTaskButton activityTargetableObjects={targetableObjects} />
-              )
-            }
-          />
-          <TaskList
-            title="Upcoming"
-            tasks={upcomingTasks ?? []}
-            button={
-              showAddButton &&
-              !todayOrPreviousTasks?.length && (
-                <AddTaskButton activityTargetableObjects={targetableObjects} />
-              )
-            }
-          />
-          <TaskList
-            title="Unscheduled"
-            tasks={unscheduledTasks ?? []}
-            button={
-              showAddButton &&
-              !todayOrPreviousTasks?.length &&
-              !upcomingTasks?.length && (
-                <AddTaskButton activityTargetableObjects={targetableObjects} />
-              )
-            }
-          />
-        </>
-      )}
+      ))}
     </StyledContainer>
   );
 };

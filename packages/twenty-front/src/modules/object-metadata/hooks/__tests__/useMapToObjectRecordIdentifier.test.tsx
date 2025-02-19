@@ -1,25 +1,28 @@
 import { renderHook } from '@testing-library/react';
-import { RecoilRoot } from 'recoil';
 
 import { useMapToObjectRecordIdentifier } from '@/object-metadata/hooks/useMapToObjectRecordIdentifier';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
+import { getJestMetadataAndApolloMocksWrapper } from '~/testing/jest/getJestMetadataAndApolloMocksWrapper';
 
-const mockObjectMetadataItems = getObjectMetadataItemsMock();
+const Wrapper = getJestMetadataAndApolloMocksWrapper({
+  apolloMocks: [],
+});
 
 describe('useMapToObjectRecordIdentifier', () => {
   it('should work as expected', async () => {
     const { result } = renderHook(
       () => {
-        const objectMetadataItem = mockObjectMetadataItems.find(
-          (item) => item.nameSingular === 'person',
-        )!;
+        const { mapToObjectRecordIdentifier } = useMapToObjectRecordIdentifier({
+          objectNameSingular: 'person',
+        });
 
-        return useMapToObjectRecordIdentifier({
-          objectMetadataItem,
-        })({ id: 'id', name: { firstName: 'Sheldon', lastName: 'Cooper' } });
+        return mapToObjectRecordIdentifier({
+          id: 'id',
+          name: { firstName: 'Sheldon', lastName: 'Cooper' },
+          __typename: 'Person',
+        });
       },
       {
-        wrapper: RecoilRoot,
+        wrapper: Wrapper,
       },
     );
 

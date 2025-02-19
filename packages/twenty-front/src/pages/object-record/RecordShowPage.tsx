@@ -1,118 +1,120 @@
-import { useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useSetRecoilState } from 'recoil';
 
-import { useFavorites } from '@/favorites/hooks/useFavorites';
-import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
-import { useFindOneRecord } from '@/object-record/hooks/useFindOneRecord';
+import { RecordShowActionMenu } from '@/action-menu/components/RecordShowActionMenu';
+import { ActionMenuComponentInstanceContext } from '@/action-menu/states/contexts/ActionMenuComponentInstanceContext';
+import { TimelineActivityContext } from '@/activities/timeline-activities/contexts/TimelineActivityContext';
+import { ContextStoreComponentInstanceContext } from '@/context-store/states/contexts/ContextStoreComponentInstanceContext';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { RecordFiltersComponentInstanceContext } from '@/object-record/record-filter/states/context/RecordFiltersComponentInstanceContext';
 import { RecordShowContainer } from '@/object-record/record-show/components/RecordShowContainer';
-import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import { IconBuildingSkyscraper } from '@/ui/display/icon';
-import { PageBody } from '@/ui/layout/page/PageBody';
-import { PageContainer } from '@/ui/layout/page/PageContainer';
-import { PageFavoriteButton } from '@/ui/layout/page/PageFavoriteButton';
-import { PageHeader } from '@/ui/layout/page/PageHeader';
-import { ShowPageAddButton } from '@/ui/layout/show-page/components/ShowPageAddButton';
-import { ShowPageMoreButton } from '@/ui/layout/show-page/components/ShowPageMoreButton';
-import { PageTitle } from '@/ui/utilities/page-title/PageTitle';
-import { FieldMetadataType } from '~/generated-metadata/graphql';
-import { isDefined } from '~/utils/isDefined';
+import { useRecordShowPage } from '@/object-record/record-show/hooks/useRecordShowPage';
+import { RecordSortsComponentInstanceContext } from '@/object-record/record-sort/states/context/RecordSortsComponentInstanceContext';
+import { RecordValueSetterEffect } from '@/object-record/record-store/components/RecordValueSetterEffect';
+import { RecordFieldValueSelectorContextProvider } from '@/object-record/record-store/contexts/RecordFieldValueSelectorContext';
+import { PageBody } from '@/ui/layout/page/components/PageBody';
+import { PageContainer } from '@/ui/layout/page/components/PageContainer';
+import { PageTitle } from '@/ui/utilities/page-title/components/PageTitle';
+import { RecordShowPageWorkflowHeader } from '@/workflow/components/RecordShowPageWorkflowHeader';
+import { RecordShowPageWorkflowVersionHeader } from '@/workflow/components/RecordShowPageWorkflowVersionHeader';
+import { useIsFeatureEnabled } from '@/workspace/hooks/useIsFeatureEnabled';
+import { FeatureFlagKey } from '~/generated/graphql';
+import { RecordShowPageHeader } from '~/pages/object-record/RecordShowPageHeader';
 
 export const RecordShowPage = () => {
-  const { objectNameSingular, objectRecordId } = useParams<{
+  const parameters = useParams<{
     objectNameSingular: string;
     objectRecordId: string;
   }>();
 
-  if (!objectNameSingular) {
-    throw new Error(`Object name is not defined`);
-  }
-
-  if (!objectRecordId) {
-    throw new Error(`Record id is not defined`);
-  }
-
-  const { labelIdentifierFieldMetadata, objectMetadataItem } =
-    useObjectMetadataItem({ objectNameSingular });
-
-  const { favorites, createFavorite, deleteFavorite } = useFavorites();
-
-  const setEntityFields = useSetRecoilState(
-    recordStoreFamilyState(objectRecordId),
-  );
-
-  const { record, loading } = useFindOneRecord({
-    objectRecordId,
+  const {
     objectNameSingular,
-  });
-
-  useEffect(() => {
-    if (!record) return;
-    setEntityFields(record);
-  }, [record, setEntityFields]);
-
-  const correspondingFavorite = favorites.find(
-    (favorite) => favorite.recordId === objectRecordId,
+    objectRecordId,
+    headerIcon,
+    loading,
+    pageTitle,
+    pageName,
+    isFavorite,
+    record,
+    objectMetadataItem,
+    handleFavoriteButtonClick,
+  } = useRecordShowPage(
+    parameters.objectNameSingular ?? '',
+    parameters.objectRecordId ?? '',
   );
 
-  const isFavorite = isDefined(correspondingFavorite);
-
-  const handleFavoriteButtonClick = async () => {
-    if (!objectNameSingular || !record) return;
-
-    if (isFavorite && isDefined(record)) {
-      deleteFavorite(correspondingFavorite.id);
-    } else {
-      createFavorite(record, objectNameSingular);
-    }
-  };
-
-  const labelIdentifierFieldValue =
-    record?.[labelIdentifierFieldMetadata?.name ?? ''];
-  const pageName =
-    labelIdentifierFieldMetadata?.type === FieldMetadataType.FullName
-      ? [
-          labelIdentifierFieldValue?.firstName,
-          labelIdentifierFieldValue?.lastName,
-        ].join(' ')
-      : `${labelIdentifierFieldValue}`;
+  const isCommandMenuV2Enabled = useIsFeatureEnabled(
+    FeatureFlagKey.IsCommandMenuV2Enabled,
+  );
 
   return (
-    <PageContainer>
-      <PageTitle title={pageName} />
-      <PageHeader
-        title={pageName ?? ''}
-        hasBackButton
-        Icon={IconBuildingSkyscraper}
-        loading={loading}
+    <RecordFieldValueSelectorContextProvider>
+      <RecordFiltersComponentInstanceContext.Provider
+        value={{ instanceId: `record-show-${objectRecordId}` }}
       >
-        {record && (
-          <>
-            <PageFavoriteButton
-              isFavorite={isFavorite}
-              onClick={handleFavoriteButtonClick}
-            />
-            <ShowPageAddButton
-              key="add"
-              activityTargetObject={{
-                id: record.id,
-                targetObjectNameSingular: objectMetadataItem?.nameSingular,
-              }}
-            />
-            <ShowPageMoreButton
-              key="more"
-              recordId={record.id}
-              objectNameSingular={objectNameSingular}
-            />
-          </>
-        )}
-      </PageHeader>
-      <PageBody>
-        <RecordShowContainer
-          objectNameSingular={objectNameSingular}
-          objectRecordId={objectRecordId}
-        />
-      </PageBody>
-    </PageContainer>
+        <RecordSortsComponentInstanceContext.Provider
+          value={{ instanceId: `record-show-${objectRecordId}` }}
+        >
+          <ContextStoreComponentInstanceContext.Provider
+            value={{ instanceId: `main-context-store` }}
+          >
+            <ActionMenuComponentInstanceContext.Provider
+              value={{ instanceId: `record-show-${objectRecordId}` }}
+            >
+              <RecordValueSetterEffect recordId={objectRecordId} />
+              <PageContainer>
+                <PageTitle title={pageTitle} />
+                <RecordShowPageHeader
+                  objectNameSingular={objectNameSingular}
+                  objectRecordId={objectRecordId}
+                  headerIcon={headerIcon}
+                >
+                  <>
+                    {!isCommandMenuV2Enabled &&
+                      objectNameSingular ===
+                        CoreObjectNameSingular.Workflow && (
+                        <RecordShowPageWorkflowHeader
+                          workflowId={objectRecordId}
+                        />
+                      )}
+                    {!isCommandMenuV2Enabled &&
+                      objectNameSingular ===
+                        CoreObjectNameSingular.WorkflowVersion && (
+                        <RecordShowPageWorkflowVersionHeader
+                          workflowVersionId={objectRecordId}
+                        />
+                      )}
+                    {(isCommandMenuV2Enabled ||
+                      (objectNameSingular !== CoreObjectNameSingular.Workflow &&
+                        objectNameSingular !==
+                          CoreObjectNameSingular.WorkflowVersion)) && (
+                      <RecordShowActionMenu
+                        {...{
+                          isFavorite,
+                          record,
+                          handleFavoriteButtonClick,
+                          objectMetadataItem,
+                          objectNameSingular,
+                        }}
+                      />
+                    )}
+                  </>
+                </RecordShowPageHeader>
+                <PageBody>
+                  <TimelineActivityContext.Provider
+                    value={{ labelIdentifierValue: pageName }}
+                  >
+                    <RecordShowContainer
+                      objectNameSingular={objectNameSingular}
+                      objectRecordId={objectRecordId}
+                      loading={loading}
+                    />
+                  </TimelineActivityContext.Provider>
+                </PageBody>
+              </PageContainer>
+            </ActionMenuComponentInstanceContext.Provider>
+          </ContextStoreComponentInstanceContext.Provider>
+        </RecordSortsComponentInstanceContext.Provider>
+      </RecordFiltersComponentInstanceContext.Provider>
+    </RecordFieldValueSelectorContextProvider>
   );
 };

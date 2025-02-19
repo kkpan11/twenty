@@ -1,23 +1,35 @@
 import { useEffect } from 'react';
-import { useRecoilState } from 'recoil';
+import { useRecoilValue } from 'recoil';
 
-import { useFindManyObjectMetadataItems } from '@/object-metadata/hooks/useFindManyObjectMetadataItems';
-import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { isDeeplyEqual } from '~/utils/isDeeplyEqual';
+import { currentUserState } from '@/auth/states/currentUserState';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
+import { useLoadMockedObjectMetadataItems } from '@/object-metadata/hooks/useLoadMockedObjectMetadataItems';
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItem';
+import { isWorkspaceActiveOrSuspended } from 'twenty-shared';
+import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 export const ObjectMetadataItemsLoadEffect = () => {
-  const { objectMetadataItems: newObjectMetadataItems } =
-    useFindManyObjectMetadataItems();
+  const currentUser = useRecoilValue(currentUserState);
+  const currentWorkspace = useRecoilValue(currentWorkspaceState);
 
-  const [objectMetadataItems, setObjectMetadataItems] = useRecoilState(
-    objectMetadataItemsState(),
-  );
+  const { refreshObjectMetadataItems } = useRefreshObjectMetadataItems();
+  const { loadMockedObjectMetadataItems } = useLoadMockedObjectMetadataItems();
 
   useEffect(() => {
-    if (!isDeeplyEqual(objectMetadataItems, newObjectMetadataItems)) {
-      setObjectMetadataItems(newObjectMetadataItems);
+    if (
+      isUndefinedOrNull(currentUser) ||
+      !isWorkspaceActiveOrSuspended(currentWorkspace)
+    ) {
+      loadMockedObjectMetadataItems();
+    } else {
+      refreshObjectMetadataItems();
     }
-  }, [newObjectMetadataItems, objectMetadataItems, setObjectMetadataItems]);
+  }, [
+    currentUser,
+    currentWorkspace,
+    loadMockedObjectMetadataItems,
+    refreshObjectMetadataItems,
+  ]);
 
   return <></>;
 };

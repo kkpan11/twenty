@@ -1,14 +1,13 @@
+import styled from '@emotion/styled';
 import { useMemo } from 'react';
 import { Controller, useFormContext } from 'react-hook-form';
-import styled from '@emotion/styled';
+import { IconCircleOff, useIcons } from 'twenty-ui';
 import { z } from 'zod';
 
 import { LABEL_IDENTIFIER_FIELD_METADATA_TYPES } from '@/object-metadata/constants/LabelIdentifierFieldMetadataTypes';
 import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
 import { getActiveFieldMetadataItems } from '@/object-metadata/utils/getActiveFieldMetadataItems';
 import { objectMetadataItemSchema } from '@/object-metadata/validation-schemas/objectMetadataItemSchema';
-import { IconCircleOff } from '@/ui/display/icon';
-import { useIcons } from '@/ui/display/icon/hooks/useIcons';
 import { Select, SelectOption } from '@/ui/input/components/Select';
 
 export const settingsDataModelObjectIdentifiersFormSchema =
@@ -20,10 +19,16 @@ export const settingsDataModelObjectIdentifiersFormSchema =
 export type SettingsDataModelObjectIdentifiersFormValues = z.infer<
   typeof settingsDataModelObjectIdentifiersFormSchema
 >;
-
+export type SettingsDataModelObjectIdentifiers =
+  keyof SettingsDataModelObjectIdentifiersFormValues;
 type SettingsDataModelObjectIdentifiersFormProps = {
   objectMetadataItem: ObjectMetadataItem;
+  onBlur: () => void;
 };
+const LABEL_IDENTIFIER_FIELD_METADATA_ID: SettingsDataModelObjectIdentifiers =
+  'labelIdentifierFieldMetadataId';
+const IMAGE_IDENTIFIER_FIELD_METADATA_ID: SettingsDataModelObjectIdentifiers =
+  'imageIdentifierFieldMetadataId';
 
 const StyledContainer = styled.div`
   display: flex;
@@ -32,11 +37,11 @@ const StyledContainer = styled.div`
 
 export const SettingsDataModelObjectIdentifiersForm = ({
   objectMetadataItem,
+  onBlur,
 }: SettingsDataModelObjectIdentifiersFormProps) => {
   const { control } =
     useFormContext<SettingsDataModelObjectIdentifiersFormValues>();
   const { getIcon } = useIcons();
-
   const labelIdentifierFieldOptions = useMemo(
     () =>
       getActiveFieldMetadataItems(objectMetadataItem)
@@ -59,41 +64,42 @@ export const SettingsDataModelObjectIdentifiersForm = ({
     label: 'None',
     value: null,
   };
-
   return (
     <StyledContainer>
       {[
         {
           label: 'Record label',
-          fieldName: 'labelIdentifierFieldMetadataId' as const,
+          fieldName: LABEL_IDENTIFIER_FIELD_METADATA_ID,
           options: labelIdentifierFieldOptions,
+          defaultValue: objectMetadataItem.labelIdentifierFieldMetadataId,
         },
         {
           label: 'Record image',
-          fieldName: 'imageIdentifierFieldMetadataId' as const,
+          fieldName: IMAGE_IDENTIFIER_FIELD_METADATA_ID,
           options: imageIdentifierFieldOptions,
+          defaultValue: null,
         },
-      ].map(({ fieldName, label, options }) => (
+      ].map(({ fieldName, label, options, defaultValue }) => (
         <Controller
           key={fieldName}
           name={fieldName}
           control={control}
-          defaultValue={objectMetadataItem[fieldName]}
-          render={({ field: { onBlur, onChange, value } }) => {
-            return (
-              <Select
-                label={label}
-                disabled={!objectMetadataItem.isCustom || !options.length}
-                fullWidth
-                dropdownId={`${fieldName}-select`}
-                emptyOption={emptyOption}
-                options={options}
-                value={value}
-                onChange={onChange}
-                onBlur={onBlur}
-              />
-            );
-          }}
+          defaultValue={defaultValue}
+          render={({ field: { onChange, value } }) => (
+            <Select
+              label={label}
+              disabled={!objectMetadataItem.isCustom || !options.length}
+              fullWidth
+              dropdownId={`${fieldName}-select`}
+              emptyOption={emptyOption}
+              options={options}
+              value={value}
+              onChange={(value) => {
+                onChange(value);
+                onBlur();
+              }}
+            />
+          )}
         />
       ))}
     </StyledContainer>

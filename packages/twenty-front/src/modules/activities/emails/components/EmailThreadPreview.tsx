@@ -1,26 +1,14 @@
-import { useRef } from 'react';
 import styled from '@emotion/styled';
 import { useRecoilCallback } from 'recoil';
+import { Avatar, GRAY_SCALE } from 'twenty-ui';
 
+import { ActivityRow } from '@/activities/components/ActivityRow';
 import { EmailThreadNotShared } from '@/activities/emails/components/EmailThreadNotShared';
 import { useEmailThread } from '@/activities/emails/hooks/useEmailThread';
-import { emailThreadIdWhenEmailThreadWasClosedState } from '@/activities/emails/state/lastViewableEmailThreadIdState';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
+import { emailThreadIdWhenEmailThreadWasClosedState } from '@/activities/emails/states/lastViewableEmailThreadIdState';
 import { useRightDrawer } from '@/ui/layout/right-drawer/hooks/useRightDrawer';
-import { GRAY_SCALE } from '@/ui/theme/constants/GrayScale';
-import { Avatar } from '@/users/components/Avatar';
-import { TimelineThread } from '~/generated/graphql';
-import { formatToHumanReadableDate } from '~/utils';
-
-const StyledCardContent = styled(CardContent)<{ visibility: string }>`
-  align-items: center;
-  display: flex;
-  gap: ${({ theme }) => theme.spacing(2)};
-  height: ${({ theme }) => theme.spacing(12)};
-  padding: ${({ theme }) => theme.spacing(0, 4)};
-  cursor: ${({ visibility }) =>
-    visibility === 'share_everything' ? 'pointer' : 'default'};
-`;
+import { MessageChannelVisibility, TimelineThread } from '~/generated/graphql';
+import { formatToHumanReadableDate } from '~/utils/date-utils';
 
 const StyledHeading = styled.div<{ unread: boolean }>`
   display: flex;
@@ -78,22 +66,14 @@ const StyledReceivedAt = styled.div`
   padding: ${({ theme }) => theme.spacing(0, 1)};
 `;
 
-export type EmailThreadVisibility = 'metadata' | 'subject' | 'share_everything';
-
 type EmailThreadPreviewProps = {
-  divider?: boolean;
   thread: TimelineThread;
 };
 
-export const EmailThreadPreview = ({
-  divider,
-  thread,
-}: EmailThreadPreviewProps) => {
-  const cardRef = useRef<HTMLDivElement>(null);
-
+export const EmailThreadPreview = ({ thread }: EmailThreadPreviewProps) => {
   const { openEmailThread } = useEmailThread();
 
-  const visibility = thread.visibility as EmailThreadVisibility;
+  const visibility = thread.visibility;
 
   const senderNames =
     thread.firstParticipant.displayName +
@@ -122,11 +102,11 @@ export const EmailThreadPreview = ({
           isSameEventThanRightDrawerClose(event.nativeEvent);
 
         const emailThreadIdWhenEmailThreadWasClosed = snapshot
-          .getLoadable(emailThreadIdWhenEmailThreadWasClosedState())
+          .getLoadable(emailThreadIdWhenEmailThreadWasClosedState)
           .getValue();
 
         const canOpen =
-          thread.visibility === 'share_everything' &&
+          thread.visibility === MessageChannelVisibility.SHARE_EVERYTHING &&
           (!clickJustTriggeredEmailDrawerClose ||
             emailThreadIdWhenEmailThreadWasClosed !== thread.id);
 
@@ -142,24 +122,32 @@ export const EmailThreadPreview = ({
     ],
   );
 
+  const isDisabled = visibility !== MessageChannelVisibility.SHARE_EVERYTHING;
+
   return (
-    <StyledCardContent
-      ref={cardRef}
+    <ActivityRow
       onClick={(event) => handleThreadClick(event)}
-      divider={divider}
-      visibility={visibility}
+      disabled={isDisabled}
     >
       <StyledHeading unread={!thread.read}>
         <StyledParticipantsContainer>
           <Avatar
             avatarUrl={thread?.firstParticipant?.avatarUrl}
             placeholder={thread.firstParticipant.displayName}
+            placeholderColorSeed={
+              thread.firstParticipant.workspaceMemberId ||
+              thread.firstParticipant.personId
+            }
             type="rounded"
           />
           {thread?.lastTwoParticipants?.[0] && (
             <StyledAvatar
               avatarUrl={thread.lastTwoParticipants[0].avatarUrl}
               placeholder={thread.lastTwoParticipants[0].displayName}
+              placeholderColorSeed={
+                thread.lastTwoParticipants[0].workspaceMemberId ||
+                thread.lastTwoParticipants[0].personId
+              }
               type="rounded"
             />
           )}
@@ -179,17 +167,19 @@ export const EmailThreadPreview = ({
       </StyledHeading>
 
       <StyledSubjectAndBody>
-        {visibility !== 'metadata' && (
+        {visibility !== MessageChannelVisibility.METADATA && (
           <StyledSubject>{thread.subject}</StyledSubject>
         )}
-        {visibility === 'share_everything' && (
+        {visibility === MessageChannelVisibility.SHARE_EVERYTHING && (
           <StyledBody>{thread.lastMessageBody}</StyledBody>
         )}
-        {visibility !== 'share_everything' && <EmailThreadNotShared />}
+        {visibility !== MessageChannelVisibility.SHARE_EVERYTHING && (
+          <EmailThreadNotShared />
+        )}
       </StyledSubjectAndBody>
       <StyledReceivedAt>
         {formatToHumanReadableDate(thread.lastMessageReceivedAt)}
       </StyledReceivedAt>
-    </StyledCardContent>
+    </ActivityRow>
   );
 };

@@ -1,8 +1,11 @@
-import { createComponentState } from '@/ui/utilities/state/component-state/utils/createComponentState';
+import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+import { RecordTableComponentInstanceContext } from '@/object-record/record-table/states/context/RecordTableComponentInstanceContext';
+import { createComponentStateV2 } from '@/ui/utilities/state/component-state/utils/createComponentStateV2';
 
-import { Filter } from '../../object-filter-dropdown/types/Filter';
-
-export const tableFiltersComponentState = createComponentState<Filter[]>({
+export const tableFiltersComponentState = createComponentStateV2<
+  RecordFilter[]
+>({
   key: 'tableFiltersComponentState',
   defaultValue: [],
+  componentInstanceContext: RecordTableComponentInstanceContext,
 });

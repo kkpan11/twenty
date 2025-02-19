@@ -17,18 +17,16 @@ window.URL.revokeObjectURL = jest.fn();
 describe.skip('downloadFile', () => {
   it('should download a file', () => {
     // Call downloadFile
-    downloadFile('path/to/file.pdf', 'file.pdf');
+    downloadFile('url/to/file.pdf', 'file.pdf');
 
     // Assert on fetch
-    expect(fetch).toHaveBeenCalledWith(
-      process.env.REACT_APP_SERVER_BASE_URL + '/files/path/to/file.pdf',
-    );
+    expect(fetch).toHaveBeenCalledWith('url/to/file.pdf');
 
     // Assert on element creation
     const link = document.querySelector(
       'a[href="mock-url"][download="file.pdf"]',
     );
-    console.log(document.body.innerHTML, link);
+
     expect(link).not.toBeNull();
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore

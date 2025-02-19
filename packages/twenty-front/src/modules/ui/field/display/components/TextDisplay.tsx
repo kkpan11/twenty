@@ -1,14 +1,19 @@
-import { OverflowingTextWithTooltip } from '../../../display/tooltip/OverflowingTextWithTooltip';
-
-import { EllipsisDisplay } from './EllipsisDisplay';
+import { useInlineCell } from '@/object-record/record-inline-cell/hooks/useInlineCell';
+import { OverflowingTextWithTooltip } from 'twenty-ui';
 
 type TextDisplayProps = {
   text: string;
-  maxWidth?: number;
+  displayedMaxRows?: number;
 };
 
-export const TextDisplay = ({ text, maxWidth }: TextDisplayProps) => (
-  <EllipsisDisplay maxWidth={maxWidth}>
-    <OverflowingTextWithTooltip text={text} />
-  </EllipsisDisplay>
-);
+export const TextDisplay = ({ text, displayedMaxRows }: TextDisplayProps) => {
+  const { isInlineCellInEditMode } = useInlineCell();
+  return (
+    <OverflowingTextWithTooltip
+      text={text}
+      displayedMaxRows={displayedMaxRows}
+      isTooltipMultiline={true}
+      hideTooltip={isInlineCellInEditMode}
+    />
+  );
+};

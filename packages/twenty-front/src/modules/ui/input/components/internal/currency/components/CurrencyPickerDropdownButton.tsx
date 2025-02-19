@@ -1,22 +1,16 @@
-import { useEffect, useState } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { IconChevronDown } from 'twenty-ui';
 
 import { CurrencyCode } from '@/object-record/record-field/types/CurrencyCode';
-import { IconChevronDown } from '@/ui/display/icon';
 import { Dropdown } from '@/ui/layout/dropdown/components/Dropdown';
 import { useDropdown } from '@/ui/layout/dropdown/hooks/useDropdown';
-import { isDefined } from '~/utils/isDefined';
 
 import { CurrencyPickerHotkeyScope } from '../types/CurrencyPickerHotkeyScope';
 
 import { CurrencyPickerDropdownSelect } from './CurrencyPickerDropdownSelect';
 
-type StyledDropdownButtonProps = {
-  isUnfolded: boolean;
-};
-
-export const StyledDropdownButtonContainer = styled.div<StyledDropdownButtonProps>`
+const StyledDropdownButtonContainer = styled.div`
   align-items: center;
   color: ${({ color }) => color ?? 'none'};
   cursor: pointer;
@@ -27,7 +21,7 @@ export const StyledDropdownButtonContainer = styled.div<StyledDropdownButtonProp
   padding-right: ${({ theme }) => theme.spacing(2)};
   user-select: none;
   &:hover {
-    filter: brightness(0.95);
+    background-color: ${({ theme }) => theme.background.transparent.light};
   }
 `;
 
@@ -64,9 +58,7 @@ export const CurrencyPickerDropdownButton = ({
 }) => {
   const theme = useTheme();
 
-  const [selectedCurrency, setSelectedCurrency] = useState<Currency>();
-
-  const { isDropdownOpen, closeDropdown } = useDropdown(
+  const { closeDropdown } = useDropdown(
     CurrencyPickerHotkeyScope.CurrencyPicker,
   );
 
@@ -75,22 +67,18 @@ export const CurrencyPickerDropdownButton = ({
     closeDropdown();
   };
 
-  useEffect(() => {
-    const currency = currencies.find(({ value }) => value === valueCode);
-    if (isDefined(currency)) {
-      setSelectedCurrency(currency);
-    }
-  }, [valueCode, currencies]);
+  const currency = currencies.find(({ value }) => value === valueCode);
+
+  const currencyCode = currency?.value ?? CurrencyCode.USD;
 
   return (
     <Dropdown
-      dropdownMenuWidth={200}
-      dropdownId="currncy-picker-dropdown-id"
+      dropdownId="currency-picker-dropdown-id"
       dropdownHotkeyScope={{ scope: CurrencyPickerHotkeyScope.CurrencyPicker }}
       clickableComponent={
-        <StyledDropdownButtonContainer isUnfolded={isDropdownOpen}>
+        <StyledDropdownButtonContainer>
           <StyledIconContainer>
-            {selectedCurrency ? selectedCurrency.value : CurrencyCode.USD}
+            {currencyCode}
             <IconChevronDown size={theme.icon.size.sm} />
           </StyledIconContainer>
         </StyledDropdownButtonContainer>
@@ -98,7 +86,7 @@ export const CurrencyPickerDropdownButton = ({
       dropdownComponents={
         <CurrencyPickerDropdownSelect
           currencies={currencies}
-          selectedCurrency={selectedCurrency}
+          selectedCurrency={currency}
           onChange={handleChange}
         />
       }

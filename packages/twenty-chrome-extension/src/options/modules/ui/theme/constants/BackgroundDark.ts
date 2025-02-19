@@ -12,8 +12,8 @@ export const BACKGROUND_DARK = {
   quaternary: GRAY_SCALE.gray70,
   danger: COLOR.red80,
   transparent: {
-    primary: RGBA(GRAY_SCALE.gray85, 0.8),
-    secondary: RGBA(GRAY_SCALE.gray80, 0.8),
+    primary: RGBA(GRAY_SCALE.gray85, 0.5),
+    secondary: RGBA(GRAY_SCALE.gray80, 0.5),
     strong: RGBA(GRAY_SCALE.gray0, 0.14),
     medium: RGBA(GRAY_SCALE.gray0, 0.1),
     light: RGBA(GRAY_SCALE.gray0, 0.06),
@@ -23,4 +23,6 @@ export const BACKGROUND_DARK = {
   overlay: RGBA(GRAY_SCALE.gray80, 0.8),
   radialGradient: `radial-gradient(50% 62.62% at 50% 0%, #505050 0%, ${GRAY_SCALE.gray60} 100%)`,
   radialGradientHover: `radial-gradient(76.32% 95.59% at 50% 0%, #505050 0%, ${GRAY_SCALE.gray60} 100%)`,
+  primaryInverted: GRAY_SCALE.gray20,
+  primaryInvertedHover: GRAY_SCALE.gray15,
 };

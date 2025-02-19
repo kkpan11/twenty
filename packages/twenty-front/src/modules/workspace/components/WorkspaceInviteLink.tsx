@@ -1,11 +1,11 @@
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { Button, IconCopy, IconLink } from 'twenty-ui';
 
-import { IconCopy, IconLink } from '@/ui/display/icon';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
-import { Button } from '@/ui/input/button/components/Button';
 import { TextInput } from '@/ui/input/components/TextInput';
-
+import { useLingui } from '@lingui/react/macro';
 const StyledContainer = styled.div`
   align-items: center;
   display: flex;
@@ -24,12 +24,13 @@ type WorkspaceInviteLinkProps = {
 export const WorkspaceInviteLink = ({
   inviteLink,
 }: WorkspaceInviteLinkProps) => {
+  const { t } = useLingui();
   const theme = useTheme();
 
   const { enqueueSnackBar } = useSnackBar();
 
   return (
-    <StyledContainer>
+    <StyledContainer data-chromatic="ignore">
       <StyledLinkContainer>
         <TextInput value={inviteLink} disabled fullWidth />
       </StyledLinkContainer>
@@ -37,10 +38,10 @@ export const WorkspaceInviteLink = ({
         Icon={IconLink}
         variant="primary"
         accent="blue"
-        title="Copy link"
+        title={t`Copy link`}
         onClick={() => {
-          enqueueSnackBar('Link copied to clipboard', {
-            variant: 'success',
+          enqueueSnackBar(t`Link copied to clipboard`, {
+            variant: SnackBarVariant.Success,
             icon: <IconCopy size={theme.icon.size.md} />,
             duration: 2000,
           });

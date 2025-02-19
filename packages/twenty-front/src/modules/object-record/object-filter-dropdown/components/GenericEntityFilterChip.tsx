@@ -1,10 +1,9 @@
-import { EntityChip } from '@/ui/display/chip/components/EntityChip';
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
+import { AvatarChip, IconComponent } from 'twenty-ui';
 
-import { Filter } from '../types/Filter';
+import { RecordFilter } from '../../record-filter/types/RecordFilter';
 
 type GenericEntityFilterChipProps = {
-  filter: Filter;
+  filter: RecordFilter;
   Icon?: IconComponent;
 };
 
@@ -12,8 +11,8 @@ export const GenericEntityFilterChip = ({
   filter,
   Icon,
 }: GenericEntityFilterChipProps) => (
-  <EntityChip
-    entityId={filter.value}
+  <AvatarChip
+    placeholderColorSeed={filter.value}
     name={filter.displayValue}
     avatarType="rounded"
     avatarUrl={filter.displayAvatarUrl}

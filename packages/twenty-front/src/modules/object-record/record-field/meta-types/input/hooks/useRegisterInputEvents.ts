@@ -1,11 +1,17 @@
 import { Key } from 'ts-key-enum';
 
+import { FieldContext } from '@/object-record/record-field/contexts/FieldContext';
+import { getDropdownFocusIdForRecordField } from '@/object-record/utils/getDropdownFocusIdForRecordField';
+import { activeDropdownFocusIdState } from '@/ui/layout/dropdown/states/activeDropdownFocusIdState';
 import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
 import { useListenClickOutside } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { isDefined } from '~/utils/isDefined';
+import { useContext } from 'react';
+import { useRecoilValue } from 'recoil';
+import { isDefined } from 'twenty-shared';
 
 export const useRegisterInputEvents = <T>({
   inputRef,
+  copyRef,
   inputValue,
   onEscape,
   onEnter,
@@ -15,22 +21,45 @@ export const useRegisterInputEvents = <T>({
   hotkeyScope,
 }: {
   inputRef: React.RefObject<any>;
+  copyRef?: React.RefObject<any>;
   inputValue: T;
-  onEscape: (inputValue: T) => void;
-  onEnter: (inputValue: T) => void;
+  onEscape?: (inputValue: T) => void;
+  onEnter?: (inputValue: T) => void;
   onTab?: (inputValue: T) => void;
   onShiftTab?: (inputValue: T) => void;
   onClickOutside?: (event: MouseEvent | TouchEvent, inputValue: T) => void;
   hotkeyScope: string;
 }) => {
+  const activeDropdownFocusId = useRecoilValue(activeDropdownFocusIdState);
+
+  const { recordId, fieldDefinition } = useContext(FieldContext);
+
   useListenClickOutside({
-    refs: [inputRef],
+    refs: [inputRef, copyRef].filter(isDefined),
     callback: (event) => {
-      event.stopImmediatePropagation();
+      const fieldDropdownFocusIdTableCell = getDropdownFocusIdForRecordField(
+        recordId,
+        fieldDefinition.fieldMetadataId,
+        'table-cell',
+      );
+
+      const fieldDropdownFocusIdInlineCell = getDropdownFocusIdForRecordField(
+        recordId,
+        fieldDefinition.fieldMetadataId,
+        'inline-cell',
+      );
+
+      if (
+        activeDropdownFocusId !== fieldDropdownFocusIdTableCell &&
+        activeDropdownFocusId !== fieldDropdownFocusIdInlineCell
+      ) {
+        return;
+      }
 
       onClickOutside?.(event, inputValue);
     },
     enabled: isDefined(onClickOutside),
+    listenerId: hotkeyScope,
   });
 
   useScopedHotkeys(

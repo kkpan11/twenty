@@ -1,33 +1,42 @@
-import { useContext } from 'react';
 import { css, useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { format } from 'date-fns';
+import { useContext } from 'react';
 import { useRecoilValue } from 'recoil';
 
 import { CalendarCurrentEventCursor } from '@/activities/calendar/components/CalendarCurrentEventCursor';
 import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
-import { CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
+import { useOpenCalendarEventRightDrawer } from '@/activities/calendar/right-drawer/hooks/useOpenCalendarEventRightDrawer';
 import { getCalendarEventEndDate } from '@/activities/calendar/utils/getCalendarEventEndDate';
+import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
 import { hasCalendarEventEnded } from '@/activities/calendar/utils/hasCalendarEventEnded';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
-import { IconArrowRight, IconLock } from '@/ui/display/icon';
-import { Card } from '@/ui/layout/card/components/Card';
-import { CardContent } from '@/ui/layout/card/components/CardContent';
-import { Avatar } from '@/users/components/Avatar';
-import { AvatarGroup } from '@/users/components/AvatarGroup';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
+import {
+  Avatar,
+  AvatarGroup,
+  Card,
+  CardContent,
+  IconArrowRight,
+  IconLock,
+} from 'twenty-ui';
+import {
+  CalendarChannelVisibility,
+  TimelineCalendarEvent,
+} from '~/generated-metadata/graphql';
 
 type CalendarEventRowProps = {
-  calendarEvent: CalendarEvent;
+  calendarEvent: TimelineCalendarEvent;
   className?: string;
 };
 
-const StyledContainer = styled.div`
+const StyledContainer = styled.div<{ showTitle?: boolean }>`
   align-items: center;
   display: inline-flex;
   gap: ${({ theme }) => theme.spacing(3)};
   height: ${({ theme }) => theme.spacing(6)};
   position: relative;
+  cursor: ${({ showTitle }) => (showTitle ? 'pointer' : 'not-allowed')};
 `;
 
 const StyledAttendanceIndicator = styled.div<{ active?: boolean }>`
@@ -46,7 +55,7 @@ const StyledAttendanceIndicator = styled.div<{ active?: boolean }>`
 const StyledLabels = styled.div`
   align-items: center;
   display: flex;
-  color: ${({ theme }) => theme.font.color.tertiary};
+  color: ${({ theme }) => theme.font.color.primary};
   gap: ${({ theme }) => theme.spacing(2)};
   flex: 1 0 auto;
 `;
@@ -54,13 +63,17 @@ const StyledLabels = styled.div`
 const StyledTime = styled.div`
   align-items: center;
   display: flex;
+  color: ${({ theme }) => theme.font.color.tertiary};
   gap: ${({ theme }) => theme.spacing(1)};
   width: ${({ theme }) => theme.spacing(26)};
 `;
 
 const StyledTitle = styled.div<{ active: boolean; canceled: boolean }>`
   flex: 1 0 auto;
-
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  width: ${({ theme }) => theme.spacing(10)};
   ${({ theme, active }) =>
     active &&
     css`
@@ -99,23 +112,35 @@ export const CalendarEventRow = ({
   className,
 }: CalendarEventRowProps) => {
   const theme = useTheme();
-  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState());
+  const currentWorkspaceMember = useRecoilValue(currentWorkspaceMemberState);
   const { displayCurrentEventCursor = false } = useContext(CalendarContext);
+  const { openCalendarEventRightDrawer } = useOpenCalendarEventRightDrawer();
 
+  const startsAt = getCalendarEventStartDate(calendarEvent);
   const endsAt = getCalendarEventEndDate(calendarEvent);
   const hasEnded = hasCalendarEventEnded(calendarEvent);
 
   const startTimeLabel = calendarEvent.isFullDay
     ? 'All day'
-    : format(calendarEvent.startsAt, 'HH:mm');
+    : format(startsAt, 'HH:mm');
   const endTimeLabel = calendarEvent.isFullDay ? '' : format(endsAt, 'HH:mm');
 
-  const isCurrentWorkspaceMemberAttending = !!calendarEvent.attendees?.find(
+  const isCurrentWorkspaceMemberAttending = calendarEvent.participants?.some(
     ({ workspaceMemberId }) => workspaceMemberId === currentWorkspaceMember?.id,
   );
+  const showTitle =
+    calendarEvent.visibility === CalendarChannelVisibility.SHARE_EVERYTHING;
 
   return (
-    <StyledContainer className={className}>
+    <StyledContainer
+      className={className}
+      showTitle={showTitle}
+      onClick={
+        showTitle
+          ? () => openCalendarEventRightDrawer(calendarEvent.id)
+          : undefined
+      }
+    >
       <StyledAttendanceIndicator active={isCurrentWorkspaceMemberAttending} />
       <StyledLabels>
         <StyledTime>
@@ -127,32 +152,35 @@ export const CalendarEventRow = ({
             </>
           )}
         </StyledTime>
-        {calendarEvent.visibility === 'METADATA' ? (
+        {showTitle ? (
+          <StyledTitle active={!hasEnded} canceled={!!calendarEvent.isCanceled}>
+            {calendarEvent.title}
+          </StyledTitle>
+        ) : (
           <StyledVisibilityCard active={!hasEnded}>
             <StyledVisibilityCardContent>
               <IconLock size={theme.icon.size.sm} />
               Not shared
             </StyledVisibilityCardContent>
           </StyledVisibilityCard>
-        ) : (
-          <StyledTitle active={!hasEnded} canceled={!!calendarEvent.isCanceled}>
-            {calendarEvent.title}
-          </StyledTitle>
         )}
       </StyledLabels>
-      {!!calendarEvent.attendees?.length && (
+      {!!calendarEvent.participants?.length && (
         <AvatarGroup
-          avatars={calendarEvent.attendees.map((attendee) => (
+          avatars={calendarEvent.participants.map((participant) => (
             <Avatar
-              key={[attendee.workspaceMemberId, attendee.displayName]
+              key={[participant.workspaceMemberId, participant.displayName]
                 .filter(isDefined)
                 .join('-')}
-              avatarUrl={
-                attendee.workspaceMemberId === currentWorkspaceMember?.id
-                  ? currentWorkspaceMember?.avatarUrl
-                  : undefined
+              avatarUrl={participant.avatarUrl}
+              placeholder={
+                participant.firstName && participant.lastName
+                  ? `${participant.firstName} ${participant.lastName}`
+                  : participant.displayName
               }
-              placeholder={attendee.displayName}
+              placeholderColorSeed={
+                participant.workspaceMemberId || participant.personId
+              }
               type="rounded"
             />
           ))}

@@ -1,61 +1,38 @@
-import { useParams } from 'react-router-dom';
-import styled from '@emotion/styled';
-
-import { useObjectNameSingularFromPlural } from '@/object-metadata/hooks/useObjectNameSingularFromPlural';
-import { useCreateOneRecord } from '@/object-record/hooks/useCreateOneRecord';
-import { RecordIndexContainer } from '@/object-record/record-index/components/RecordIndexContainer';
-import { DEFAULT_CELL_SCOPE } from '@/object-record/record-table/record-table-cell/hooks/useOpenRecordTableCell';
-import { useSelectedTableCellEditMode } from '@/object-record/record-table/record-table-cell/hooks/useSelectedTableCellEditMode';
-import { PageBody } from '@/ui/layout/page/PageBody';
-import { PageContainer } from '@/ui/layout/page/PageContainer';
-import { useSetHotkeyScope } from '@/ui/utilities/hotkey/hooks/useSetHotkeyScope';
-import { RecordIndexPageHeader } from '~/pages/object-record/RecordIndexPageHeader';
-
-const StyledIndexContainer = styled.div`
-  display: flex;
-  height: 100%;
-  width: 100%;
-`;
+import { contextStoreCurrentObjectMetadataItemComponentState } from '@/context-store/states/contextStoreCurrentObjectMetadataItemComponentState';
+import { contextStoreCurrentViewIdComponentState } from '@/context-store/states/contextStoreCurrentViewIdComponentState';
+import { ContextStoreComponentInstanceContext } from '@/context-store/states/contexts/ContextStoreComponentInstanceContext';
+import { RecordIndexContainerGater } from '@/object-record/record-index/components/RecordIndexContainerGater';
+import { PageContainer } from '@/ui/layout/page/components/PageContainer';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { isNonEmptyString, isUndefined } from '@sniptt/guards';
 
 export const RecordIndexPage = () => {
-  const objectNamePlural = useParams().objectNamePlural ?? '';
+  const contextStoreCurrentViewId = useRecoilComponentValueV2(
+    contextStoreCurrentViewIdComponentState,
+    'main-context-store',
+  );
 
-  const { objectNameSingular } = useObjectNameSingularFromPlural({
-    objectNamePlural,
-  });
+  const objectMetadataItem = useRecoilComponentValueV2(
+    contextStoreCurrentObjectMetadataItemComponentState,
+    'main-context-store',
+  );
 
-  const { createOneRecord: createOneObject } = useCreateOneRecord({
-    objectNameSingular,
-  });
-
-  const recordIndexId = objectNamePlural ?? '';
-  const setHotkeyScope = useSetHotkeyScope();
-
-  const { setSelectedTableCellEditMode } = useSelectedTableCellEditMode({
-    scopeId: recordIndexId,
-  });
-
-  const handleAddButtonClick = async () => {
-    await createOneObject?.({
-      position: 'first',
-    });
-
-    setSelectedTableCellEditMode(0, 0);
-    setHotkeyScope(DEFAULT_CELL_SCOPE.scope, DEFAULT_CELL_SCOPE.customScopes);
-  };
+  if (
+    isUndefined(objectMetadataItem) ||
+    !isNonEmptyString(contextStoreCurrentViewId)
+  ) {
+    return null;
+  }
 
   return (
     <PageContainer>
-      <RecordIndexPageHeader createRecord={handleAddButtonClick} />
-      <PageBody>
-        <StyledIndexContainer>
-          <RecordIndexContainer
-            recordIndexId={recordIndexId}
-            objectNamePlural={objectNamePlural}
-            createRecord={handleAddButtonClick}
-          />
-        </StyledIndexContainer>
-      </PageBody>
+      <ContextStoreComponentInstanceContext.Provider
+        value={{
+          instanceId: 'main-context-store',
+        }}
+      >
+        <RecordIndexContainerGater />
+      </ContextStoreComponentInstanceContext.Provider>
     </PageContainer>
   );
 };

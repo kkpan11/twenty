@@ -1,32 +1,37 @@
-import { useMemo } from 'react';
 import { useQuery } from '@apollo/client';
+import { useMemo } from 'react';
 
 import { useObjectMetadataItem } from '@/object-metadata/hooks/useObjectMetadataItem';
 import { ObjectMetadataItemIdentifier } from '@/object-metadata/types/ObjectMetadataItemIdentifier';
-import { getFindDuplicateRecordsQueryResponseField } from '@/object-record/hooks/useGenerateFindDuplicateRecordsQuery';
-import { useMapConnectionToRecords } from '@/object-record/hooks/useMapConnectionToRecords';
+import { getRecordsFromRecordConnection } from '@/object-record/cache/utils/getRecordsFromRecordConnection';
+import { RecordGqlConnection } from '@/object-record/graphql/types/RecordGqlConnection';
+import { RecordGqlOperationFindDuplicatesResult } from '@/object-record/graphql/types/RecordGqlOperationFindDuplicatesResults';
+import { useFindDuplicateRecordsQuery } from '@/object-record/hooks/useFindDuplicatesRecordsQuery';
 import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { ObjectRecordConnection } from '@/object-record/types/ObjectRecordConnection';
+import { getFindDuplicateRecordsQueryResponseField } from '@/object-record/utils/getFindDuplicateRecordsQueryResponseField';
+import { SnackBarVariant } from '@/ui/feedback/snack-bar-manager/components/SnackBar';
 import { useSnackBar } from '@/ui/feedback/snack-bar-manager/hooks/useSnackBar';
 import { logError } from '~/utils/logError';
 
-import { ObjectRecordQueryResult } from '../types/ObjectRecordQueryResult';
-
 export const useFindDuplicateRecords = <T extends ObjectRecord = ObjectRecord>({
-  objectRecordId = '',
+  objectRecordIds = [],
   objectNameSingular,
   onCompleted,
-  depth,
+  skip,
 }: ObjectMetadataItemIdentifier & {
-  objectRecordId: string | undefined;
-  onCompleted?: (data: ObjectRecordConnection<T>) => void;
+  objectRecordIds: string[] | undefined;
+  onCompleted?: (data: RecordGqlConnection[]) => void;
   skip?: boolean;
-  depth?: number;
 }) => {
   const findDuplicateQueryStateIdentifier = objectNameSingular;
 
-  const { objectMetadataItem, findDuplicateRecordsQuery } =
-    useObjectMetadataItem({ objectNameSingular }, depth);
+  const { objectMetadataItem } = useObjectMetadataItem({
+    objectNameSingular,
+  });
+
+  const { findDuplicateRecordsQuery } = useFindDuplicateRecordsQuery({
+    objectNameSingular,
+  });
 
   const { enqueueSnackBar } = useSnackBar();
 
@@ -34,48 +39,46 @@ export const useFindDuplicateRecords = <T extends ObjectRecord = ObjectRecord>({
     objectMetadataItem.nameSingular,
   );
 
-  const { data, loading, error } = useQuery<ObjectRecordQueryResult<T>>(
-    findDuplicateRecordsQuery,
-    {
-      variables: {
-        id: objectRecordId,
+  const { data, loading, error } =
+    useQuery<RecordGqlOperationFindDuplicatesResult>(
+      findDuplicateRecordsQuery,
+      {
+        skip: !!skip,
+        variables: {
+          ids: objectRecordIds,
+        },
+        onCompleted: (data) => {
+          onCompleted?.(data[queryResponseField]);
+        },
+        onError: (error) => {
+          logError(
+            `useFindDuplicateRecords for "${objectMetadataItem.nameSingular}" error : ` +
+              error,
+          );
+          enqueueSnackBar(`Error finding duplicates:", ${error.message}`, {
+            variant: SnackBarVariant.Error,
+          });
+        },
       },
-      onCompleted: (data) => {
-        onCompleted?.(data[queryResponseField]);
-      },
-      onError: (error) => {
-        logError(
-          `useFindDuplicateRecords for "${objectMetadataItem.nameSingular}" error : ` +
-            error,
-        );
-        enqueueSnackBar(
-          `Error during useFindDuplicateRecords for "${objectMetadataItem.nameSingular}", ${error.message}`,
-          {
-            variant: 'error',
-          },
-        );
-      },
-    },
-  );
+    );
 
-  const objectRecordConnection = data?.[queryResponseField];
+  const objectResults = data?.[queryResponseField];
 
-  const mapConnectionToRecords = useMapConnectionToRecords();
-
-  const records = useMemo(
+  const results = useMemo(
     () =>
-      mapConnectionToRecords({
-        objectRecordConnection,
-        objectNameSingular,
-        depth: 5,
-      }) as T[],
-    [mapConnectionToRecords, objectRecordConnection, objectNameSingular],
+      objectResults?.map((result: RecordGqlConnection) => {
+        return result
+          ? (getRecordsFromRecordConnection({
+              recordConnection: result,
+            }) as T[])
+          : [];
+      }),
+    [objectResults],
   );
 
   return {
     objectMetadataItem,
-    records,
-    totalCount: objectRecordConnection?.totalCount || 0,
+    results,
     loading,
     error,
     queryStateIdentifier: findDuplicateQueryStateIdentifier,

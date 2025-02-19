@@ -1,7 +1,8 @@
-import { Filter } from '@/object-record/object-filter-dropdown/types/Filter';
-import { createState } from '@/ui/utilities/state/utils/createState';
+import { createState } from '@ui/utilities/state/utils/createState';
 
-export const recordIndexFiltersState = createState<Filter[]>({
+import { RecordFilter } from '@/object-record/record-filter/types/RecordFilter';
+
+export const recordIndexFiltersState = createState<RecordFilter[]>({
   key: 'recordIndexFiltersState',
   defaultValue: [],
 });

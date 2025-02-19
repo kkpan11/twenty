@@ -1,32 +1,17 @@
-import { useMemo } from 'react';
-import { ApolloClient, InMemoryCache } from '@apollo/client';
-import { isNonEmptyString } from '@sniptt/guards';
-import { useRecoilState } from 'recoil';
-
-import { tokenPairState } from '@/auth/states/tokenPairState';
+import { useApolloFactory } from '@/apollo/hooks/useApolloFactory';
 import { REACT_APP_SERVER_BASE_URL } from '~/config';
 
-import { ApolloMetadataClientContext } from '../context/ApolloClientMetadataContext';
+import { ApolloMetadataClientContext } from '../contexts/ApolloClientMetadataContext';
 
 export const ApolloMetadataClientProvider = ({
   children,
 }: {
   children: React.ReactNode;
 }) => {
-  const [tokenPair] = useRecoilState(tokenPairState());
-  const apolloMetadataClient = useMemo(() => {
-    if (isNonEmptyString(tokenPair?.accessToken.token)) {
-      return new ApolloClient({
-        uri: `${REACT_APP_SERVER_BASE_URL}/metadata`,
-        cache: new InMemoryCache(),
-        headers: {
-          Authorization: `Bearer ${tokenPair.accessToken.token}`,
-        },
-      });
-    } else {
-      return null;
-    }
-  }, [tokenPair]);
+  const apolloMetadataClient = useApolloFactory({
+    uri: `${REACT_APP_SERVER_BASE_URL}/metadata`,
+    connectToDevTools: false,
+  });
 
   return (
     <ApolloMetadataClientContext.Provider value={apolloMetadataClient}>

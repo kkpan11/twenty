@@ -1,7 +1,6 @@
 'use client';
 
 import styled from '@emotion/styled';
-import { usePathname } from 'next/navigation';
 
 import {
   DiscordIcon,
@@ -19,7 +18,7 @@ const FooterContainer = styled.div`
   color: rgb(129, 129, 129);
   gap: 32px;
   @media (max-width: 809px) {
-    display: none;
+    padding: 36px 24px;
   }
 `;
 
@@ -28,6 +27,9 @@ const LeftSideFooter = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+  @media (max-width: 809px) {
+    display: none;
+  }
 `;
 
 const RightSideFooter = styled.div`
@@ -35,6 +37,10 @@ const RightSideFooter = styled.div`
   justify-content: space-between;
   gap: 48px;
   height: 146px;
+  @media (max-width: 809px) {
+    flex-direction: column;
+    height: fit-content;
+  }
 `;
 
 const RightSideFooterColumn = styled.div`
@@ -60,16 +66,12 @@ const RightSideFooterColumnTitle = styled.div`
 `;
 
 export const FooterDesktop = () => {
-  const path = usePathname();
-  const isTwentyDev = path.includes('developers');
-
-  if (isTwentyDev) return;
-
   return (
     <FooterContainer>
       <div
         style={{
           width: '100%',
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'row',
           justifyContent: 'space-between',
@@ -87,15 +89,20 @@ export const FooterDesktop = () => {
           </RightSideFooterColumn>
           <RightSideFooterColumn>
             <RightSideFooterColumnTitle>Resources</RightSideFooterColumnTitle>
-            <RightSideFooterLink href="https://docs.twenty.com">
-              Documentation
+            <RightSideFooterLink href="/developers">
+              Developers
             </RightSideFooterLink>
-            <RightSideFooterLink href="/releases">
-              Changelog
+            <RightSideFooterLink href="/user-guide">
+              User-Guide
             </RightSideFooterLink>
+            <RightSideFooterLink href="/releases">Releases</RightSideFooterLink>
+            <RightSideFooterLink href="/jobs">Jobs</RightSideFooterLink>
           </RightSideFooterColumn>
           <RightSideFooterColumn>
             <RightSideFooterColumnTitle>Other</RightSideFooterColumnTitle>
+            <RightSideFooterLink href="/contributors">
+              Contributors
+            </RightSideFooterLink>
             <RightSideFooterLink href="/oss-friends">
               OSS Friends
             </RightSideFooterLink>
@@ -111,6 +118,7 @@ export const FooterDesktop = () => {
       <div
         style={{
           width: '100%',
+          margin: '0 auto',
           display: 'flex',
           flexDirection: 'row',
           justifyContent: 'space-between',
@@ -120,7 +128,7 @@ export const FooterDesktop = () => {
       >
         <div>
           <span style={{ fontFamily: 'Inter, sans-serif' }}>©</span>
-          2023 Twenty PBC
+          {new Date().getFullYear()} Twenty PBC
         </div>
         <div
           style={{

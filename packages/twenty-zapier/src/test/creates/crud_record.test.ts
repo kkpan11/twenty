@@ -4,7 +4,7 @@ import { crudRecordKey } from '../../creates/crud_record';
 import App from '../../index';
 import getBundle from '../../utils/getBundle';
 import requestDb from '../../utils/requestDb';
-import { Operation } from '../../utils/triggers/triggers.utils';
+import { DatabaseEventAction } from '../../utils/triggers/triggers.utils';
 const appTester = createAppTester(App);
 tools.env.inject();
 
@@ -12,12 +12,21 @@ describe('creates.create_company', () => {
   test('should run to create a Company Record', async () => {
     const bundle = getBundle({
       nameSingular: 'Company',
-      crudZapierOperation: Operation.create,
+      crudZapierOperation: DatabaseEventAction.CREATED,
       name: 'Company Name',
-      address: 'Company Address',
-      domainName: 'Company Domain Name',
-      linkedinLink: { url: '/linkedin_url', label: 'Test linkedinUrl' },
-      xLink: { url: '/x_url', label: 'Test xUrl' },
+      address: { addressCity: 'Paris' },
+      linkedinLink: {
+        primaryLinkUrl: '/linkedin_url',
+        primaryLinkLabel: 'Test linkedinUrl',
+        secondaryLinks: [
+          '{ url: "/linkedin_url2", label: "Test linkedinUrl2" }',
+        ],
+      },
+      xLink: {
+        primaryLinkUrl: '/x_url',
+        primaryLinkLabel: 'Test xUrl',
+        secondaryLinks: ['{ url: "/x_url2", label: "Test xUrl2" }'],
+      },
       annualRecurringRevenue: {
         amountMicros: 100000000000,
         currencyCode: 'USD',
@@ -47,10 +56,16 @@ describe('creates.create_company', () => {
   test('should run to create a Person Record', async () => {
     const bundle = getBundle({
       nameSingular: 'Person',
-      crudZapierOperation: Operation.create,
+      crudZapierOperation: DatabaseEventAction.CREATED,
       name: { firstName: 'John', lastName: 'Doe' },
-      email: 'johndoe@gmail.com',
-      phone: '+33610203040',
+      phones: {
+        primaryPhoneNumber: '610203040',
+        primaryPhoneCountryCode: 'FR',
+        primaryPhoneCallingCode: '+33',
+        additionalPhones: [
+          '{number: "610203041", countryCode: "FR", callingCode: "+33"}',
+        ],
+      },
       city: 'Paris',
     });
     const result = await appTester(
@@ -64,11 +79,13 @@ describe('creates.create_company', () => {
         requestDb(
           z,
           bundle,
-          `query findPerson {person(filter: {id: {eq: "${result.data.createPerson.id}"}}){phone}}`,
+          `query findPerson {person(filter: {id: {eq: "${result.data.createPerson.id}"}}){phones{primaryPhoneNumber}}}`,
         ),
       bundle,
     );
-    expect(checkDbResult.data.person.phone).toEqual('+33610203040');
+    expect(checkDbResult.data.person.phones.primaryPhoneNumber).toEqual(
+      '610203040',
+    );
   });
 });
 
@@ -76,7 +93,7 @@ describe('creates.update_company', () => {
   test('should run to update a Company record', async () => {
     const createBundle = getBundle({
       nameSingular: 'Company',
-      crudZapierOperation: Operation.create,
+      crudZapierOperation: DatabaseEventAction.CREATED,
       name: 'Company Name',
       employees: 25,
     });
@@ -90,7 +107,7 @@ describe('creates.update_company', () => {
 
     const updateBundle = getBundle({
       nameSingular: 'Company',
-      crudZapierOperation: Operation.update,
+      crudZapierOperation: DatabaseEventAction.UPDATED,
       id: companyId,
       name: 'Updated Company Name',
     });
@@ -119,7 +136,7 @@ describe('creates.delete_company', () => {
   test('should run to delete a Company record', async () => {
     const createBundle = getBundle({
       nameSingular: 'Company',
-      crudZapierOperation: Operation.create,
+      crudZapierOperation: DatabaseEventAction.CREATED,
       name: 'Delete Company Name',
       employees: 25,
     });
@@ -133,7 +150,7 @@ describe('creates.delete_company', () => {
 
     const deleteBundle = getBundle({
       nameSingular: 'Company',
-      crudZapierOperation: Operation.delete,
+      crudZapierOperation: DatabaseEventAction.DELETED,
       id: companyId,
     });
 

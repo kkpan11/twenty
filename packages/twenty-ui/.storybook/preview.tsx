@@ -1,20 +1,33 @@
+import { useEffect } from 'react';
 import { ThemeProvider } from '@emotion/react';
-import { withThemeFromJSXProvider } from '@storybook/addon-themes';
-import { Preview, ReactRenderer } from '@storybook/react';
+import { Preview } from '@storybook/react';
+import { useDarkMode } from 'storybook-dark-mode';
 
-import { THEME_DARK, THEME_LIGHT } from '../src/theme/index';
+import {
+  THEME_DARK,
+  THEME_LIGHT,
+  ThemeContextProvider,
+} from '../src/theme/index';
 
 const preview: Preview = {
-  // TODO: Add toggle for darkTheme.
   decorators: [
-    withThemeFromJSXProvider<ReactRenderer>({
-      themes: {
-        light: THEME_LIGHT,
-        dark: THEME_DARK,
-      },
-      defaultTheme: 'light',
-      Provider: ThemeProvider,
-    }),
+    (Story) => {
+      const mode = useDarkMode() ? 'Dark' : 'Light';
+
+      const theme = mode === 'Dark' ? THEME_DARK : THEME_LIGHT;
+
+      useEffect(() => {
+        document.documentElement.className = mode === 'Dark' ? 'dark' : 'light';
+      }, [mode]);
+
+      return (
+        <ThemeProvider theme={theme}>
+          <ThemeContextProvider theme={theme}>
+            <Story />
+          </ThemeContextProvider>
+        </ThemeProvider>
+      );
+    },
   ],
 };
 

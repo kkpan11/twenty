@@ -1,20 +1,26 @@
 {
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
-    "module": "commonjs",
-    "forceConsistentCasingInFileNames": true,
+    "jsx": "react-jsx",
+    "allowJs": false,
+    "allowSyntheticDefaultImports": true,
     "strict": true,
-    "noImplicitOverride": true,
-    "noPropertyAccessFromIndexSignature": true,
-    "noImplicitReturns": true,
-    "noFallthroughCasesInSwitch": true,
-    "jsx": "react"
+    "esModuleInterop": true,
+    "noEmit": true,
+    "types": ["node"],
+    "outDir": "../../.cache/tsc",
+    "paths": {
+      "@ui/*": ["./src/*"]
+    }
   },
   "files": [],
   "include": [],
   "references": [
     {
-      "path": "./tsconfig.lib.json"
+      "path": "./tsconfig.build.json"
+    },
+    {
+      "path": "./tsconfig.dev.json"
     },
     {
       "path": "./tsconfig.spec.json"

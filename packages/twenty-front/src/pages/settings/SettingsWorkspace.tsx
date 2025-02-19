@@ -1,42 +1,69 @@
-import styled from '@emotion/styled';
+import { useLingui } from '@lingui/react/macro';
+import { useRecoilValue } from 'recoil';
+import { H2Title, IconWorld, Section, UndecoratedLink } from 'twenty-ui';
 
+import { isMultiWorkspaceEnabledState } from '@/client-config/states/isMultiWorkspaceEnabledState';
+import { SettingsCard } from '@/settings/components/SettingsCard';
 import { SettingsPageContainer } from '@/settings/components/SettingsPageContainer';
 import { DeleteWorkspace } from '@/settings/profile/components/DeleteWorkspace';
 import { NameField } from '@/settings/workspace/components/NameField';
 import { ToggleImpersonate } from '@/settings/workspace/components/ToggleImpersonate';
 import { WorkspaceLogoUploader } from '@/settings/workspace/components/WorkspaceLogoUploader';
-import { IconSettings } from '@/ui/display/icon';
-import { H1Title } from '@/ui/display/typography/components/H1Title';
-import { H2Title } from '@/ui/display/typography/components/H2Title';
-import { SubMenuTopBarContainer } from '@/ui/layout/page/SubMenuTopBarContainer';
-import { Section } from '@/ui/layout/section/components/Section';
+import { SettingsPath } from '@/types/SettingsPath';
+import { SubMenuTopBarContainer } from '@/ui/layout/page/components/SubMenuTopBarContainer';
+import { getSettingsPath } from '~/utils/navigation/getSettingsPath';
 
-const StyledH1Title = styled(H1Title)`
-  margin-bottom: 0;
-`;
+export const SettingsWorkspace = () => {
+  const isMultiWorkspaceEnabled = useRecoilValue(isMultiWorkspaceEnabledState);
+  const { t } = useLingui();
 
-export const SettingsWorkspace = () => (
-  <SubMenuTopBarContainer Icon={IconSettings} title="Settings">
-    <SettingsPageContainer>
-      <StyledH1Title title="General" />
-      <Section>
-        <H2Title title="Picture" />
-        <WorkspaceLogoUploader />
-      </Section>
-      <Section>
-        <H2Title title="Name" description="Name of your workspace" />
-        <NameField />
-      </Section>
-      <Section>
-        <H2Title
-          title="Support"
-          addornment={<ToggleImpersonate />}
-          description="Grant Twenty support temporary access to your workspace so we can troubleshoot problems or recover content on your behalf. You can revoke access at any time."
-        />
-      </Section>
-      <Section>
-        <DeleteWorkspace />
-      </Section>
-    </SettingsPageContainer>
-  </SubMenuTopBarContainer>
-);
+  return (
+    <SubMenuTopBarContainer
+      title={t`General`}
+      links={[
+        {
+          children: t`Workspace`,
+          href: getSettingsPath(SettingsPath.Workspace),
+        },
+        { children: t`General` },
+      ]}
+    >
+      <SettingsPageContainer>
+        <Section>
+          <H2Title title={t`Picture`} />
+          <WorkspaceLogoUploader />
+        </Section>
+        <Section>
+          <H2Title title={t`Name`} description={t`Name of your workspace`} />
+          <NameField />
+        </Section>
+        {isMultiWorkspaceEnabled && (
+          <>
+            <Section>
+              <H2Title
+                title={t`Domain`}
+                description={t`Edit your subdomain name or set a custom domain.`}
+              />
+              <UndecoratedLink to={getSettingsPath(SettingsPath.Domain)}>
+                <SettingsCard
+                  title={t`Customize Domain`}
+                  Icon={<IconWorld />}
+                />
+              </UndecoratedLink>
+            </Section>
+            <Section>
+              <H2Title
+                title={t`Support`}
+                adornment={<ToggleImpersonate />}
+                description={t`Grant Twenty support temporary access to your workspace so we can troubleshoot problems or recover content on your behalf. You can revoke access at any time.`}
+              />
+            </Section>
+          </>
+        )}
+        <Section>
+          <DeleteWorkspace />
+        </Section>
+      </SettingsPageContainer>
+    </SubMenuTopBarContainer>
+  );
+};

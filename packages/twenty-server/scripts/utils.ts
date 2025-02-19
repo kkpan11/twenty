@@ -1,18 +1,6 @@
-import { ConfigService } from '@nestjs/config';
-
 import console from 'console';
 
-import { config } from 'dotenv';
-import { DataSource } from 'typeorm';
-
-config();
-const configService = new ConfigService();
-
-export const connectionSource = new DataSource({
-  type: 'postgres',
-  logging: false,
-  url: configService.get<string>('PG_DATABASE_URL'),
-});
+import { rawDataSource } from 'src/database/typeorm/raw/raw.datasource';
 
 export const camelToSnakeCase = (str) =>
   str.replace(/[A-Z]/g, (letter) => `_${letter.toLowerCase()}`);
@@ -24,7 +12,7 @@ export const performQuery = async (
   ignoreAlreadyExistsError = false,
 ) => {
   try {
-    const result = await connectionSource.query(query);
+    const result = await rawDataSource.query(query);
 
     withLog && console.log(`Performed '${consoleDescription}' successfully`);
 

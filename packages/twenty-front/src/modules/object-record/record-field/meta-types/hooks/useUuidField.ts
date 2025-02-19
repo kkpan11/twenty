@@ -4,21 +4,22 @@ import { useRecoilState } from 'recoil';
 import { FieldUUidValue } from '@/object-record/record-field/types/FieldMetadata';
 import { isFieldUuid } from '@/object-record/record-field/types/guards/isFieldUuid';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
 
 import { FieldContext } from '../../contexts/FieldContext';
 import { assertFieldMetadata } from '../../types/guards/assertFieldMetadata';
 import { isFieldTextValue } from '../../types/guards/isFieldTextValue';
 
 export const useUuidField = () => {
-  const { entityId, fieldDefinition, hotkeyScope } = useContext(FieldContext);
+  const { recordId, fieldDefinition, hotkeyScope } = useContext(FieldContext);
 
-  assertFieldMetadata('UUID', isFieldUuid, fieldDefinition);
+  assertFieldMetadata(FieldMetadataType.UUID, isFieldUuid, fieldDefinition);
 
   const fieldName = fieldDefinition.metadata.fieldName;
 
   const [fieldValue, setFieldValue] = useRecoilState<FieldUUidValue>(
     recordStoreFamilySelector({
-      recordId: entityId,
+      recordId,
       fieldName: fieldName,
     }),
   );

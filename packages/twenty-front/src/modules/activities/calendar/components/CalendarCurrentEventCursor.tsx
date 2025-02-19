@@ -1,4 +1,3 @@
-import { useContext, useMemo, useState } from 'react';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import {
@@ -8,16 +7,25 @@ import {
   startOfMonth,
 } from 'date-fns';
 import { AnimatePresence, motion } from 'framer-motion';
+import { useContext, useMemo, useState } from 'react';
 
 import { CalendarContext } from '@/activities/calendar/contexts/CalendarContext';
-import { CalendarEvent } from '@/activities/calendar/types/CalendarEvent';
 import { getCalendarEventEndDate } from '@/activities/calendar/utils/getCalendarEventEndDate';
+import { getCalendarEventStartDate } from '@/activities/calendar/utils/getCalendarEventStartDate';
 import { hasCalendarEventEnded } from '@/activities/calendar/utils/hasCalendarEventEnded';
 import { hasCalendarEventStarted } from '@/activities/calendar/utils/hasCalendarEventStarted';
+import { TimelineCalendarEvent } from '~/generated/graphql';
 
 type CalendarCurrentEventCursorProps = {
-  calendarEvent: CalendarEvent;
+  calendarEvent: TimelineCalendarEvent;
 };
+
+const StyledDot = styled(motion.div)`
+  background-color: ${({ theme }) => theme.font.color.danger};
+  border-radius: 1px;
+  height: ${({ theme }) => theme.spacing(1)};
+  width: ${({ theme }) => theme.spacing(1)};
+`;
 
 const StyledCurrentEventCursor = styled(motion.div)`
   align-items: center;
@@ -29,15 +37,6 @@ const StyledCurrentEventCursor = styled(motion.div)`
   right: 0;
   border-radius: ${({ theme }) => theme.border.radius.sm};
   transform: translateY(-50%);
-
-  &::before {
-    background-color: ${({ theme }) => theme.font.color.danger};
-    border-radius: 1px;
-    content: '';
-    display: block;
-    height: ${({ theme }) => theme.spacing(1)};
-    width: ${({ theme }) => theme.spacing(1)};
-  }
 `;
 
 export const CalendarCurrentEventCursor = ({
@@ -52,12 +51,16 @@ export const CalendarCurrentEventCursor = ({
   } = useContext(CalendarContext);
 
   const nextCalendarEvent = getNextCalendarEvent(calendarEvent);
+  const nextCalendarEventStartsAt = nextCalendarEvent
+    ? getCalendarEventStartDate(nextCalendarEvent)
+    : undefined;
   const isNextEventThisMonth =
-    !!nextCalendarEvent && isThisMonth(nextCalendarEvent.startsAt);
+    !!nextCalendarEventStartsAt && isThisMonth(nextCalendarEventStartsAt);
 
+  const calendarEventStartsAt = getCalendarEventStartDate(calendarEvent);
   const calendarEventEndsAt = getCalendarEventEndDate(calendarEvent);
 
-  const isCurrent = currentCalendarEvent.id === calendarEvent.id;
+  const isCurrent = currentCalendarEvent?.id === calendarEvent.id;
   const [hasStarted, setHasStarted] = useState(
     hasCalendarEventStarted(calendarEvent),
   );
@@ -66,7 +69,7 @@ export const CalendarCurrentEventCursor = ({
   );
   const [isWaiting, setIsWaiting] = useState(hasEnded && !isNextEventThisMonth);
 
-  const dayTime = startOfDay(calendarEvent.startsAt).getTime();
+  const dayTime = startOfDay(calendarEventStartsAt).getTime();
   const dayEvents = calendarEventsByDayTime[dayTime];
   const isFirstEventOfDay = dayEvents?.slice(-1)[0] === calendarEvent;
   const isLastEventOfDay = dayEvents?.[0] === calendarEvent;
@@ -81,7 +84,7 @@ export const CalendarCurrentEventCursor = ({
       transition: {
         delay: Math.max(
           0,
-          differenceInSeconds(calendarEvent.startsAt, new Date()),
+          differenceInSeconds(calendarEventStartsAt, new Date()),
         ),
       },
     },
@@ -99,9 +102,9 @@ export const CalendarCurrentEventCursor = ({
       top: `-${topOffset}px`,
       transition: {
         delay:
-          isWaiting && nextCalendarEvent
+          isWaiting && nextCalendarEventStartsAt
             ? differenceInSeconds(
-                startOfMonth(nextCalendarEvent.startsAt),
+                startOfMonth(nextCalendarEventStartsAt),
                 new Date(),
               )
             : 0,
@@ -158,10 +161,19 @@ export const CalendarCurrentEventCursor = ({
               updateCurrentCalendarEvent();
             }
           }}
-          transition={{
-            duration: theme.animation.duration.normal,
-          }}
-        />
+          transition={{ duration: theme.animation.duration.normal }}
+        >
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{
+              delay: theme.animation.duration.normal,
+              duration: theme.animation.duration.normal,
+            }}
+          >
+            <StyledDot />
+          </motion.div>
+        </StyledCurrentEventCursor>
       )}
     </AnimatePresence>
   );

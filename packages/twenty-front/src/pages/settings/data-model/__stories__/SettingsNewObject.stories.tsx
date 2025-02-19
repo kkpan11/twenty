@@ -28,6 +28,13 @@ export type Story = StoryObj<typeof SettingsNewObject>;
 export const WithStandardSelected: Story = {
   play: async () => {
     const canvas = within(document.body);
+
+    await canvas.findByRole(
+      'heading',
+      { name: 'New Object', level: 3 },
+      { timeout: 5000 },
+    );
+
     const listingInput = await canvas.findByPlaceholderText('Listing');
     const pluralInput = await canvas.findByPlaceholderText('Listings');
     const descriptionInput = await canvas.findByPlaceholderText(

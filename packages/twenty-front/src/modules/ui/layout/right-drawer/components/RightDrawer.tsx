@@ -1,37 +1,43 @@
-import { useRef } from 'react';
+import { isRightDrawerAnimationCompletedState } from '@/ui/layout/right-drawer/states/isRightDrawerAnimationCompletedState';
+import { isRightDrawerMinimizedState } from '@/ui/layout/right-drawer/states/isRightDrawerMinimizedState';
+
+import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
 import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
 import { motion } from 'framer-motion';
-import { useRecoilCallback, useRecoilState, useRecoilValue } from 'recoil';
-import { Key } from 'ts-key-enum';
+import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { isDefined } from 'twenty-shared';
 
-import { RIGHT_DRAWER_CLICK_OUTSIDE_LISTENER_ID } from '@/ui/layout/right-drawer/constants/RightDrawerClickOutsideListener';
-import { rightDrawerCloseEventState } from '@/ui/layout/right-drawer/states/rightDrawerCloseEventsState';
-import { useScopedHotkeys } from '@/ui/utilities/hotkey/hooks/useScopedHotkeys';
-import { useClickOutsideListener } from '@/ui/utilities/pointer-event/hooks/useClickOutsideListener';
-import { ClickOutsideMode } from '@/ui/utilities/pointer-event/hooks/useListenClickOutside';
-import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import { isDefined } from '~/utils/isDefined';
-
-import { useRightDrawer } from '../hooks/useRightDrawer';
-import { isRightDrawerExpandedState } from '../states/isRightDrawerExpandedState';
 import { isRightDrawerOpenState } from '../states/isRightDrawerOpenState';
 import { rightDrawerPageState } from '../states/rightDrawerPageState';
-import { RightDrawerHotkeyScope } from '../types/RightDrawerHotkeyScope';
 
+import { RIGHT_DRAWER_ANIMATION_VARIANTS } from '@/ui/layout/right-drawer/constants/RightDrawerAnimationVariants';
+import { RightDrawerAnimationVariant } from '@/ui/layout/right-drawer/types/RightDrawerAnimationVariant';
 import { RightDrawerRouter } from './RightDrawerRouter';
 
-const StyledContainer = styled(motion.div)`
+const StyledContainer = styled(motion.div)<{ isRightDrawerMinimized: boolean }>`
   background: ${({ theme }) => theme.background.primary};
-  border-left: 1px solid ${({ theme }) => theme.border.color.medium};
-  box-shadow: ${({ theme }) => theme.boxShadow.strong};
-  height: 100%;
+  border-left: ${({ theme, isRightDrawerMinimized }) =>
+    isRightDrawerMinimized
+      ? `1px solid ${theme.border.color.strong}`
+      : `1px solid ${theme.border.color.medium}`};
+  border-top: ${({ theme, isRightDrawerMinimized }) =>
+    isRightDrawerMinimized ? `1px solid ${theme.border.color.strong}` : 'none'};
+  border-top-left-radius: ${({ theme, isRightDrawerMinimized }) =>
+    isRightDrawerMinimized ? theme.border.radius.md : '0'};
+  box-shadow: ${({ theme, isRightDrawerMinimized }) =>
+    isRightDrawerMinimized ? 'none' : theme.boxShadow.light};
+  height: 100dvh;
   overflow-x: hidden;
   position: fixed;
 
   right: 0;
   top: 0;
-  z-index: 100;
+  z-index: 30;
+
+  .modal-backdrop {
+    background: ${({ theme }) => theme.background.overlayTertiary};
+  }
 `;
 
 const StyledRightDrawer = styled.div`
@@ -41,87 +47,46 @@ const StyledRightDrawer = styled.div`
 `;
 
 export const RightDrawer = () => {
-  const [isRightDrawerOpen, setIsRightDrawerOpen] = useRecoilState(
-    isRightDrawerOpenState(),
-  );
-
-  const isRightDrawerExpanded = useRecoilValue(isRightDrawerExpandedState());
-
-  const rightDrawerPage = useRecoilValue(rightDrawerPageState());
-
-  const { closeRightDrawer } = useRightDrawer();
-
-  const rightDrawerRef = useRef<HTMLDivElement>(null);
-
-  const { useListenClickOutside } = useClickOutsideListener(
-    RIGHT_DRAWER_CLICK_OUTSIDE_LISTENER_ID,
-  );
-
-  useListenClickOutside({
-    refs: [rightDrawerRef],
-    callback: useRecoilCallback(
-      ({ snapshot, set }) =>
-        (event) => {
-          const isRightDrawerOpen = snapshot
-            .getLoadable(isRightDrawerOpenState())
-            .getValue();
-
-          if (isRightDrawerOpen) {
-            set(rightDrawerCloseEventState(), event);
-            closeRightDrawer();
-          }
-        },
-      [closeRightDrawer],
-    ),
-    mode: ClickOutsideMode.comparePixels,
-  });
-
   const theme = useTheme();
 
-  useScopedHotkeys(
-    [Key.Escape],
+  const isRightDrawerOpen = useRecoilValue(isRightDrawerOpenState);
 
-    () => {
-      closeRightDrawer();
-    },
-    RightDrawerHotkeyScope.RightDrawer,
-    [setIsRightDrawerOpen],
+  const isRightDrawerMinimized = useRecoilValue(isRightDrawerMinimizedState);
+
+  const setIsRightDrawerAnimationCompleted = useSetRecoilState(
+    isRightDrawerAnimationCompletedState,
   );
+
+  const rightDrawerPage = useRecoilValue(rightDrawerPageState);
 
   const isMobile = useIsMobile();
 
-  const rightDrawerWidth = isRightDrawerOpen
-    ? isMobile || isRightDrawerExpanded
-      ? '100%'
-      : theme.rightDrawerWidth
-    : '0';
+  const targetVariantForAnimation: RightDrawerAnimationVariant =
+    !isRightDrawerOpen
+      ? 'closed'
+      : isRightDrawerMinimized
+        ? 'minimized'
+        : isMobile
+          ? 'fullScreen'
+          : 'normal';
+
+  const handleAnimationComplete = () => {
+    setIsRightDrawerAnimationCompleted(isRightDrawerOpen);
+  };
 
   if (!isDefined(rightDrawerPage)) {
     return <></>;
   }
 
-  const variants = {
-    fullScreen: {
-      width: '100%',
-    },
-    normal: {
-      width: rightDrawerWidth,
-    },
-    closed: {
-      width: 0,
-    },
-  };
-
   return (
     <StyledContainer
-      initial="closed"
-      animate={isRightDrawerOpen ? 'normal' : 'closed'}
-      variants={variants}
-      transition={{
-        duration: theme.animation.duration.normal,
-      }}
+      isRightDrawerMinimized={isRightDrawerMinimized}
+      animate={targetVariantForAnimation}
+      variants={RIGHT_DRAWER_ANIMATION_VARIANTS}
+      transition={{ duration: theme.animation.duration.normal }}
+      onAnimationComplete={handleAnimationComplete}
     >
-      <StyledRightDrawer ref={rightDrawerRef}>
+      <StyledRightDrawer>
         {isRightDrawerOpen && <RightDrawerRouter />}
       </StyledRightDrawer>
     </StyledContainer>

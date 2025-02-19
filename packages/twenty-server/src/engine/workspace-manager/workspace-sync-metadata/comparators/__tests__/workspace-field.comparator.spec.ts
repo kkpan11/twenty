@@ -16,7 +16,6 @@ describe('WorkspaceFieldComparator', () => {
       type: 'TEXT',
       name: 'DefaultFieldName',
       label: 'Default Field Label',
-      targetColumnMap: 'default_column',
       defaultValue: null,
       description: 'Default description',
       isCustom: false,
@@ -37,7 +36,7 @@ describe('WorkspaceFieldComparator', () => {
       ],
     } as any;
 
-    const result = comparator.compare(original, standard);
+    const result = comparator.compare('', original.fields, standard.fields);
 
     expect(result).toEqual([
       {
@@ -66,7 +65,7 @@ describe('WorkspaceFieldComparator', () => {
       ],
     } as any;
 
-    const result = comparator.compare(original, standard);
+    const result = comparator.compare('', original.fields, standard.fields);
 
     expect(result).toEqual([
       {
@@ -89,7 +88,7 @@ describe('WorkspaceFieldComparator', () => {
     } as any;
     const standard = { fields: [] } as any;
 
-    const result = comparator.compare(original, standard);
+    const result = comparator.compare('', original.fields, standard.fields);
 
     expect(result).toEqual([
       {
@@ -109,7 +108,7 @@ describe('WorkspaceFieldComparator', () => {
       fields: [createMockFieldMetadata({ standardId: '1' })],
     } as any;
 
-    const result = comparator.compare(original, standard);
+    const result = comparator.compare('', original.fields, standard.fields);
 
     expect(result).toHaveLength(0);
   });

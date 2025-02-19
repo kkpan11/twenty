@@ -12,6 +12,7 @@
     "esModuleInterop": true,
     "target": "es2017",
     "sourceMap": true,
+    "inlineSources": true,
     "outDir": "./dist",
     "incremental": true,
     "skipLibCheck": true,
@@ -24,8 +25,8 @@
     "resolveJsonModule": true,
     "types": ["jest", "node"],
     "paths": {
-      "src/*": ["packages/twenty-server/src/*"],
-      "twenty-emails": ["packages/twenty-emails/src/index.ts"]
+      "src/*": ["./src/*"],
+      "test/*": ["./test/*"]
     }
   },
   "ts-node": {

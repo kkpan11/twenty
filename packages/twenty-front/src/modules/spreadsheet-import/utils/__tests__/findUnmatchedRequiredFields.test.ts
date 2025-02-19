@@ -2,8 +2,9 @@ import {
   Column,
   ColumnType,
 } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
-import { Field, Validation } from '@/spreadsheet-import/types';
+import { Field, FieldValidationDefinition } from '@/spreadsheet-import/types';
 import { findUnmatchedRequiredFields } from '@/spreadsheet-import/utils/findUnmatchedRequiredFields';
+import { FieldMetadataType } from 'twenty-shared';
 
 const nameField: Field<'Name'> = {
   key: 'Name',
@@ -12,6 +13,7 @@ const nameField: Field<'Name'> = {
   fieldType: {
     type: 'input',
   },
+  fieldMetadataType: FieldMetadataType.TEXT,
 };
 
 const ageField: Field<'Age'> = {
@@ -21,10 +23,18 @@ const ageField: Field<'Age'> = {
   fieldType: {
     type: 'input',
   },
+  fieldMetadataType: FieldMetadataType.NUMBER,
 };
-const validations: Validation[] = [{ rule: 'required' }];
-const nameFieldWithValidations: Field<'Name'> = { ...nameField, validations };
-const ageFieldWithValidations: Field<'Age'> = { ...ageField, validations };
+
+const validations: FieldValidationDefinition[] = [{ rule: 'required' }];
+const nameFieldWithValidations: Field<'Name'> = {
+  ...nameField,
+  fieldValidationDefinitions: validations,
+};
+const ageFieldWithValidations: Field<'Age'> = {
+  ...ageField,
+  fieldValidationDefinitions: validations,
+};
 
 type ColumnValues = 'Name' | 'Age';
 

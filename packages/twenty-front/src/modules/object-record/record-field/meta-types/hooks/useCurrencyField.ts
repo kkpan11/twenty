@@ -3,8 +3,8 @@ import { useRecoilState, useRecoilValue } from 'recoil';
 
 import { useRecordFieldInput } from '@/object-record/record-field/hooks/useRecordFieldInput';
 import { recordStoreFamilySelector } from '@/object-record/record-store/states/selectors/recordStoreFamilySelector';
-import { canBeCastAsIntegerOrNull } from '~/utils/cast-as-integer-or-null';
-import { convertCurrencyToCurrencyMicros } from '~/utils/convert-currency-amount';
+import { FieldMetadataType } from '~/generated-metadata/graphql';
+import { convertCurrencyAmountToCurrencyMicros } from '~/utils/convertCurrencyToCurrencyMicros';
 
 import { FieldContext } from '../../contexts/FieldContext';
 import { usePersistField } from '../../hooks/usePersistField';
@@ -14,15 +14,19 @@ import { isFieldCurrency } from '../../types/guards/isFieldCurrency';
 import { isFieldCurrencyValue } from '../../types/guards/isFieldCurrencyValue';
 
 export const useCurrencyField = () => {
-  const { entityId, fieldDefinition, hotkeyScope } = useContext(FieldContext);
+  const { recordId, fieldDefinition, hotkeyScope } = useContext(FieldContext);
 
-  assertFieldMetadata('CURRENCY', isFieldCurrency, fieldDefinition);
+  assertFieldMetadata(
+    FieldMetadataType.CURRENCY,
+    isFieldCurrency,
+    fieldDefinition,
+  );
 
   const fieldName = fieldDefinition.metadata.fieldName;
 
   const [fieldValue, setFieldValue] = useRecoilState<FieldCurrencyValue>(
     recordStoreFamilySelector({
-      recordId: entityId,
+      recordId,
       fieldName: fieldName,
     }),
   );
@@ -36,15 +40,12 @@ export const useCurrencyField = () => {
     amountText: string;
     currencyCode: string;
   }) => {
-    if (!canBeCastAsIntegerOrNull(amountText)) {
-      return;
-    }
     const amount = parseFloat(amountText);
 
     const newCurrencyValue = {
       amountMicros: isNaN(amount)
         ? null
-        : convertCurrencyToCurrencyMicros(amount),
+        : convertCurrencyAmountToCurrencyMicros(amount),
       currencyCode,
     };
 
@@ -55,9 +56,11 @@ export const useCurrencyField = () => {
   };
 
   const { setDraftValue, getDraftValueSelector } =
-    useRecordFieldInput<FieldCurrencyValue>(`${entityId}-${fieldName}`);
+    useRecordFieldInput<FieldCurrencyValue>(`${recordId}-${fieldName}`);
 
   const draftValue = useRecoilValue(getDraftValueSelector());
+
+  const defaultValue = fieldDefinition.defaultValue;
 
   return {
     fieldDefinition,
@@ -67,5 +70,6 @@ export const useCurrencyField = () => {
     setFieldValue,
     hotkeyScope,
     persistCurrencyField,
+    defaultValue,
   };
 };

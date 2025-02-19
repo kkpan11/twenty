@@ -1,12 +1,16 @@
 import styled from '@emotion/styled';
 import { Meta, StoryObj } from '@storybook/react';
+import { ComponentDecorator } from 'twenty-ui';
 
-import { mockedCompanyObjectMetadataItem } from '@/object-record/record-field/__mocks__/fieldDefinitions';
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
 import { FormProviderDecorator } from '~/testing/decorators/FormProviderDecorator';
 import { IconsProviderDecorator } from '~/testing/decorators/IconsProviderDecorator';
 
+import { I18nFrontDecorator } from '~/testing/decorators/I18nFrontDecorator';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { SettingsDataModelObjectAboutForm } from '../SettingsDataModelObjectAboutForm';
+const mockedCompanyObjectMetadataItem = generatedMockObjectMetadataItems.find(
+  (item) => item.nameSingular === 'company',
+);
 
 const StyledContainer = styled.div`
   flex: 1;
@@ -22,6 +26,7 @@ const meta: Meta<typeof SettingsDataModelObjectAboutForm> = {
         <Story />
       </StyledContainer>
     ),
+    I18nFrontDecorator,
     FormProviderDecorator,
     IconsProviderDecorator,
     ComponentDecorator,

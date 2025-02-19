@@ -1,3 +1,5 @@
+/* eslint-disable @nx/workspace-no-hardcoded-colors */
+
 const grayScale = {
   gray100: '#000000',
   gray90: '#141414',
@@ -20,22 +22,35 @@ const grayScale = {
   gray0: '#ffffff',
 };
 
+const colors = {
+  blue40: '#5e90f2',
+};
+
 export const emailTheme = {
   font: {
     colors: {
       highlighted: grayScale.gray60,
       primary: grayScale.gray50,
-      tertiary: grayScale.gray40,
+      tertiary: grayScale.gray35,
       inverted: grayScale.gray0,
+      blue: colors.blue40,
     },
+    family: 'Trebuchet MS', // Google Inter not working, we need to use a web safe font, see https://templates.mailchimp.com/design/typography/
     weight: {
       regular: 400,
       bold: 600,
     },
     size: {
+      sm: '12px',
       md: '13px',
       lg: '16px',
+      xl: '24px',
     },
+    lineHeight: '20px',
+  },
+  border: {
+    radius: { sm: '4px', md: '8px' },
+    color: { highlighted: grayScale.gray20 },
   },
   background: {
     colors: { highlight: grayScale.gray15 },

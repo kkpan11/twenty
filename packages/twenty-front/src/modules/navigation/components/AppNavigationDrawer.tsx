@@ -1,22 +1,19 @@
-import { useEffect } from 'react';
-import { useRecoilValue, useSetRecoilState } from 'recoil';
+import { useRecoilState, useRecoilValue } from 'recoil';
 
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { SettingsNavigationDrawerItems } from '@/settings/components/SettingsNavigationDrawerItems';
-import { SupportChat } from '@/support/components/SupportChat';
-import { GithubVersionLink } from '@/ui/navigation/link/components/GithubVersionLink';
+import { SupportDropdown } from '@/support/components/SupportDropdown';
 import {
   NavigationDrawer,
   NavigationDrawerProps,
 } from '@/ui/navigation/navigation-drawer/components/NavigationDrawer';
-import { isNavigationDrawerOpenState } from '@/ui/navigation/states/isNavigationDrawerOpenState';
-import { useIsMobile } from '@/ui/utilities/responsive/hooks/useIsMobile';
-import { getImageAbsoluteURIOrBase64 } from '@/users/utils/getProfilePictureAbsoluteURI';
+import { isAdvancedModeEnabledState } from '@/ui/navigation/navigation-drawer/states/isAdvancedModeEnabledState';
 
-import { useIsSettingsPage } from '../hooks/useIsSettingsPage';
-import { currentMobileNavigationDrawerState } from '../states/currentMobileNavigationDrawerState';
+import { useIsSettingsDrawer } from '@/navigation/hooks/useIsSettingsDrawer';
 
-import { MainNavigationDrawerItems } from './MainNavigationDrawerItems';
+import { MainNavigationDrawerItems } from '@/navigation/components/MainNavigationDrawerItems';
+import { useLingui } from '@lingui/react/macro';
+import { AdvancedSettingsToggle } from 'twenty-ui';
 
 export type AppNavigationDrawerProps = {
   className?: string;
@@ -25,45 +22,37 @@ export type AppNavigationDrawerProps = {
 export const AppNavigationDrawer = ({
   className,
 }: AppNavigationDrawerProps) => {
-  const isMobile = useIsMobile();
-  const isSettingsPage = useIsSettingsPage();
-  const currentMobileNavigationDrawer = useRecoilValue(
-    currentMobileNavigationDrawerState(),
-  );
-  const setIsNavigationDrawerOpen = useSetRecoilState(
-    isNavigationDrawerOpenState,
-  );
-  const currentWorkspace = useRecoilValue(currentWorkspaceState());
+  const isSettingsDrawer = useIsSettingsDrawer();
 
-  const isSettingsDrawer = isMobile
-    ? currentMobileNavigationDrawer === 'settings'
-    : isSettingsPage;
+  const currentWorkspace = useRecoilValue(currentWorkspaceState);
+  const [isAdvancedModeEnabled, setIsAdvancedModeEnabled] = useRecoilState(
+    isAdvancedModeEnabledState,
+  );
+
+  const { t } = useLingui();
 
   const drawerProps: NavigationDrawerProps = isSettingsDrawer
     ? {
-        isSubMenu: true,
-        title: 'Settings',
+        title: t`Exit Settings`,
         children: <SettingsNavigationDrawerItems />,
-        footer: <GithubVersionLink />,
+        footer: (
+          <AdvancedSettingsToggle
+            isAdvancedModeEnabled={isAdvancedModeEnabled}
+            setIsAdvancedModeEnabled={setIsAdvancedModeEnabled}
+          />
+        ),
+        logo: '',
       }
     : {
-        logo:
-          (currentWorkspace?.logo &&
-            getImageAbsoluteURIOrBase64(currentWorkspace.logo)) ??
-          undefined,
-        title: currentWorkspace?.displayName ?? undefined,
+        logo: currentWorkspace?.logo ?? '',
+        title: currentWorkspace?.displayName ?? '',
         children: <MainNavigationDrawerItems />,
-        footer: <SupportChat />,
+        footer: <SupportDropdown />,
       };
-
-  useEffect(() => {
-    setIsNavigationDrawerOpen(!isMobile);
-  }, [isMobile, setIsNavigationDrawerOpen]);
 
   return (
     <NavigationDrawer
       className={className}
-      isSubMenu={drawerProps.isSubMenu}
       logo={drawerProps.logo}
       title={drawerProps.title}
       footer={drawerProps.footer}

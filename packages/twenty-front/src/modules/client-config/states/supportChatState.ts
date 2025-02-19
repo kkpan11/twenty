@@ -1,4 +1,5 @@
-import { createState } from '@/ui/utilities/state/utils/createState';
+import { createState } from '@ui/utilities/state/utils/createState';
+
 import { Support } from '~/generated/graphql';
 
 export const supportChatState = createState<Support>({

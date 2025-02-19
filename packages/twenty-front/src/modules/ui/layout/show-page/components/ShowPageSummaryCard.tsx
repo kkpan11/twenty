@@ -1,14 +1,17 @@
-import { ChangeEvent, ReactNode, useRef } from 'react';
-import { Tooltip } from 'react-tooltip';
+import { SKELETON_LOADER_HEIGHT_SIZES } from '@/activities/components/SkeletonLoader';
+import { useTheme } from '@emotion/react';
 import styled from '@emotion/styled';
+import { Trans } from '@lingui/react/macro';
+import { ChangeEvent, ReactNode, useRef } from 'react';
+import Skeleton, { SkeletonTheme } from 'react-loading-skeleton';
+import { AppTooltip, Avatar, AvatarType, IconComponent } from 'twenty-ui';
 import { v4 as uuidV4 } from 'uuid';
 
-import { Avatar, AvatarType } from '@/users/components/Avatar';
+import { isDefined } from 'twenty-shared';
 import {
   beautifyExactDateTime,
   beautifyPastDateRelativeToNow,
 } from '~/utils/date-utils';
-import { isDefined } from '~/utils/isDefined';
 
 type ShowPageSummaryCardProps = {
   avatarPlaceholder: string;
@@ -16,59 +19,84 @@ type ShowPageSummaryCardProps = {
   date: string;
   id?: string;
   logoOrAvatar?: string;
+  icon?: IconComponent;
+  iconColor?: string;
   onUploadPicture?: (file: File) => void;
   title: ReactNode;
+  loading: boolean;
+  isMobile?: boolean;
 };
 
-const StyledShowPageSummaryCard = styled.div`
+export const StyledShowPageSummaryCard = styled.div<{
+  isMobile: boolean;
+}>`
   align-items: center;
   display: flex;
-  flex-direction: column;
-  gap: ${({ theme }) => theme.spacing(3)};
-  justify-content: center;
+  flex-direction: ${({ isMobile }) => (isMobile ? 'row' : 'column')};
+  gap: ${({ theme, isMobile }) =>
+    isMobile ? theme.spacing(2) : theme.spacing(3)};
+  justify-content: ${({ isMobile }) => (isMobile ? 'flex-start' : 'center')};
   padding: ${({ theme }) => theme.spacing(4)};
   border-bottom: 1px solid ${({ theme }) => theme.border.color.light};
+  height: ${({ isMobile }) => (isMobile ? '77px' : '127px')};
+  box-sizing: border-box;
 `;
 
-const StyledInfoContainer = styled.div`
-  align-items: center;
+const StyledInfoContainer = styled.div<{ isMobile: boolean }>`
+  align-items: ${({ isMobile }) => (isMobile ? 'flex-start' : 'center')};
   display: flex;
   flex-direction: column;
   gap: ${({ theme }) => theme.spacing(1)};
   width: 100%;
 `;
 
-const StyledDate = styled.div`
+const StyledDate = styled.div<{ isMobile: boolean }>`
   color: ${({ theme }) => theme.font.color.tertiary};
   cursor: pointer;
+  padding-left: ${({ theme, isMobile }) => (isMobile ? theme.spacing(2) : 0)};
 `;
 
-const StyledTitle = styled.div`
+const StyledTitle = styled.div<{ isMobile: boolean }>`
   color: ${({ theme }) => theme.font.color.primary};
   display: flex;
   font-size: ${({ theme }) => theme.font.size.xl};
   font-weight: ${({ theme }) => theme.font.weight.semiBold};
-  justify-content: center;
+  justify-content: ${({ isMobile }) => (isMobile ? 'flex-start' : 'center')};
+  width: 90%;
 `;
 
-const StyledTooltip = styled(Tooltip)`
-  background-color: ${({ theme }) => theme.background.primary};
-  box-shadow: ${({ theme }) => theme.boxShadow.light};
-
-  color: ${({ theme }) => theme.font.color.primary};
-
-  font-size: ${({ theme }) => theme.font.size.sm};
-  font-weight: ${({ theme }) => theme.font.weight.regular};
-  padding: ${({ theme }) => theme.spacing(2)};
-`;
-
-const StyledAvatarWrapper = styled.div`
-  cursor: pointer;
+const StyledAvatarWrapper = styled.div<{ isAvatarEditable: boolean }>`
+  cursor: ${({ isAvatarEditable }) =>
+    isAvatarEditable ? 'pointer' : 'default'};
 `;
 
 const StyledFileInput = styled.input`
   display: none;
 `;
+
+const StyledSubSkeleton = styled.div`
+  align-items: center;
+  display: flex;
+  height: 37px;
+  justify-content: center;
+  width: 108px;
+`;
+
+const StyledShowPageSummaryCardSkeletonLoader = () => {
+  const theme = useTheme();
+  return (
+    <SkeletonTheme
+      baseColor={theme.background.tertiary}
+      highlightColor={theme.background.transparent.lighter}
+      borderRadius={4}
+    >
+      <Skeleton width={40} height={SKELETON_LOADER_HEIGHT_SIZES.standard.xl} />
+      <StyledSubSkeleton>
+        <Skeleton width={96} height={SKELETON_LOADER_HEIGHT_SIZES.standard.s} />
+      </StyledSubSkeleton>
+    </SkeletonTheme>
+  );
+};
 
 export const ShowPageSummaryCard = ({
   avatarPlaceholder,
@@ -76,15 +104,18 @@ export const ShowPageSummaryCard = ({
   date,
   id,
   logoOrAvatar,
+  icon,
+  iconColor,
   onUploadPicture,
   title,
+  loading,
+  isMobile = false,
 }: ShowPageSummaryCardProps) => {
   const beautifiedCreatedAt =
     date !== '' ? beautifyPastDateRelativeToNow(date) : '';
   const exactCreatedAt = date !== '' ? beautifyExactDateTime(date) : '';
   const dateElementId = `date-id-${uuidV4()}`;
   const inputFileRef = useRef<HTMLInputElement>(null);
-
   const onFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (isDefined(e.target.files)) onUploadPicture?.(e.target.files[0]);
   };
@@ -93,16 +124,25 @@ export const ShowPageSummaryCard = ({
     inputFileRef?.current?.click?.();
   };
 
+  if (loading)
+    return (
+      <StyledShowPageSummaryCard isMobile={isMobile}>
+        <StyledShowPageSummaryCardSkeletonLoader />
+      </StyledShowPageSummaryCard>
+    );
+
   return (
-    <StyledShowPageSummaryCard>
-      <StyledAvatarWrapper>
+    <StyledShowPageSummaryCard isMobile={isMobile}>
+      <StyledAvatarWrapper isAvatarEditable={!!onUploadPicture}>
         <Avatar
           avatarUrl={logoOrAvatar}
           onClick={onUploadPicture ? handleAvatarClick : undefined}
           size="xl"
-          entityId={id}
+          placeholderColorSeed={id}
           placeholder={avatarPlaceholder}
-          type={avatarType}
+          type={icon ? 'icon' : avatarType}
+          Icon={icon}
+          iconColor={iconColor}
         />
         <StyledFileInput
           ref={inputFileRef}
@@ -110,10 +150,14 @@ export const ShowPageSummaryCard = ({
           type="file"
         />
       </StyledAvatarWrapper>
-      <StyledInfoContainer>
-        <StyledTitle>{title}</StyledTitle>
-        <StyledDate id={dateElementId}>Added {beautifiedCreatedAt}</StyledDate>
-        <StyledTooltip
+      <StyledInfoContainer isMobile={isMobile}>
+        <StyledTitle isMobile={isMobile}>{title}</StyledTitle>
+        {beautifiedCreatedAt && (
+          <StyledDate isMobile={isMobile} id={dateElementId}>
+            <Trans>Added {beautifiedCreatedAt}</Trans>
+          </StyledDate>
+        )}
+        <AppTooltip
           anchorSelect={`#${dateElementId}`}
           content={exactCreatedAt}
           clickable

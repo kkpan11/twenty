@@ -1,17 +1,19 @@
-import { Tag } from '@/ui/display/tag/components/Tag';
-
-import { useSelectField } from '../../hooks/useSelectField';
+import { useSelectFieldDisplay } from '@/object-record/record-field/meta-types/hooks/useSelectFieldDisplay';
+import { SelectDisplay } from '@/ui/field/display/components/SelectDisplay';
+import { isDefined } from 'twenty-shared';
 
 export const SelectFieldDisplay = () => {
-  const { fieldValue, fieldDefinition } = useSelectField();
+  const { fieldValue, fieldDefinition } = useSelectFieldDisplay();
 
-  const selectedOption = fieldDefinition.metadata.options.find(
+  const selectedOption = fieldDefinition.metadata.options?.find(
     (option) => option.value === fieldValue,
   );
 
-  return selectedOption ? (
-    <Tag color={selectedOption.color} text={selectedOption.label} />
-  ) : (
-    <></>
+  if (!isDefined(selectedOption)) {
+    return <></>;
+  }
+
+  return (
+    <SelectDisplay color={selectedOption.color} label={selectedOption.label} />
   );
 };

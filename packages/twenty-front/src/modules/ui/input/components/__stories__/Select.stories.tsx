@@ -1,16 +1,15 @@
-import { useState } from 'react';
 import { Meta, StoryObj } from '@storybook/react';
 import { userEvent, within } from '@storybook/test';
-
-import { ComponentDecorator } from '~/testing/decorators/ComponentDecorator';
+import { useState } from 'react';
+import { ComponentDecorator, IconPlus } from 'twenty-ui';
 
 import { Select, SelectProps } from '../Select';
 
-type RenderProps = SelectProps<string | number | null>;
+type RenderProps = SelectProps<string | number | boolean | null>;
 
 const Render = (args: RenderProps) => {
   const [value, setValue] = useState(args.value);
-  const handleChange = (value: string | number | null) => {
+  const handleChange = (value: string | number | boolean | null) => {
     args.onChange?.(value);
     setValue(value);
   };
@@ -56,4 +55,14 @@ export const Disabled: Story = {
 
 export const WithSearch: Story = {
   args: { withSearchInput: true },
+};
+
+export const CallToActionButton: Story = {
+  args: {
+    callToActionButton: {
+      onClick: () => {},
+      Icon: IconPlus,
+      text: 'Add action',
+    },
+  },
 };

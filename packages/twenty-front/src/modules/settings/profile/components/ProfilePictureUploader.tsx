@@ -5,9 +5,8 @@ import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMembe
 import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
 import { useUpdateOneRecord } from '@/object-record/hooks/useUpdateOneRecord';
 import { ImageInput } from '@/ui/input/components/ImageInput';
-import { getImageAbsoluteURIOrBase64 } from '@/users/utils/getProfilePictureAbsoluteURI';
+import { isDefined } from 'twenty-shared';
 import { useUploadProfilePictureMutation } from '~/generated/graphql';
-import { isDefined } from '~/utils/isDefined';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 export const ProfilePictureUploader = () => {
@@ -15,7 +14,7 @@ export const ProfilePictureUploader = () => {
     useUploadProfilePictureMutation();
 
   const [currentWorkspaceMember, setCurrentWorkspaceMember] = useRecoilState(
-    currentWorkspaceMemberState(),
+    currentWorkspaceMemberState,
   );
 
   const [uploadController, setUploadController] =
@@ -52,7 +51,7 @@ export const ProfilePictureUploader = () => {
       setUploadController(null);
       setErrorMessage(null);
 
-      const avatarUrl = result?.data?.uploadProfilePicture;
+      const avatarUrl = result?.data?.uploadProfilePicture.split('?')[0];
 
       if (!avatarUrl) {
         throw new Error('Avatar URL not found');
@@ -65,11 +64,14 @@ export const ProfilePictureUploader = () => {
         },
       });
 
-      setCurrentWorkspaceMember({ ...currentWorkspaceMember, avatarUrl });
+      setCurrentWorkspaceMember({
+        ...currentWorkspaceMember,
+        avatarUrl: result?.data?.uploadProfilePicture,
+      });
 
       return result;
     } catch (error) {
-      setErrorMessage('An error occured while uploading the picture.');
+      setErrorMessage('An error occurred while uploading the picture.');
     }
   };
 
@@ -89,19 +91,19 @@ export const ProfilePictureUploader = () => {
       await updateOneRecord({
         idToUpdate: currentWorkspaceMember?.id,
         updateOneRecordInput: {
-          avatarUrl: null,
+          avatarUrl: '',
         },
       });
 
       setCurrentWorkspaceMember({ ...currentWorkspaceMember, avatarUrl: null });
     } catch (error) {
-      setErrorMessage('An error occured while removing the picture.');
+      setErrorMessage('An error occurred while removing the picture.');
     }
   };
 
   return (
     <ImageInput
-      picture={getImageAbsoluteURIOrBase64(currentWorkspaceMember?.avatarUrl)}
+      picture={currentWorkspaceMember?.avatarUrl}
       onUpload={handleUpload}
       onRemove={handleRemove}
       onAbort={handleAbort}

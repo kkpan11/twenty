@@ -1,9 +1,15 @@
-import { useInView } from 'react-intersection-observer';
 import styled from '@emotion/styled';
+import { useContext, useEffect } from 'react';
+import { useInView } from 'react-intersection-observer';
 import { useRecoilValue } from 'recoil';
+import { GRAY_SCALE } from 'twenty-ui';
 
-import { useRecordBoardStates } from '@/object-record/record-board/hooks/internal/useRecordBoardStates';
-import { GRAY_SCALE } from '@/ui/theme/constants/GrayScale';
+import { RecordBoardColumnContext } from '@/object-record/record-board/record-board-column/contexts/RecordBoardColumnContext';
+import { isRecordBoardFetchingRecordsByColumnFamilyState } from '@/object-record/record-board/states/isRecordBoardFetchingRecordsByColumnFamilyState';
+import { recordBoardShouldFetchMoreInColumnComponentFamilyState } from '@/object-record/record-board/states/recordBoardShouldFetchMoreInColumnComponentFamilyState';
+import { isRecordIndexLoadMoreLockedComponentState } from '@/object-record/record-index/states/isRecordIndexLoadMoreLockedComponentState';
+import { useRecoilComponentValueV2 } from '@/ui/utilities/state/component-state/hooks/useRecoilComponentValueV2';
+import { useSetRecoilComponentFamilyStateV2 } from '@/ui/utilities/state/component-state/hooks/useSetRecoilComponentFamilyStateV2';
 
 const StyledText = styled.div`
   align-items: center;
@@ -16,21 +22,38 @@ const StyledText = styled.div`
 `;
 
 export const RecordBoardColumnFetchMoreLoader = () => {
-  const { getIsFetchingRecordState, getOnFetchMoreVisibilityChangeState } =
-    useRecordBoardStates();
-  const isFetchingRecords = useRecoilValue(getIsFetchingRecordState());
+  const { columnDefinition } = useContext(RecordBoardColumnContext);
 
-  const onFetchMoreVisibilityChange = useRecoilValue(
-    getOnFetchMoreVisibilityChangeState(),
+  const isFetchingRecord = useRecoilValue(
+    isRecordBoardFetchingRecordsByColumnFamilyState(columnDefinition.id),
   );
 
-  const { ref } = useInView({
-    onChange: onFetchMoreVisibilityChange,
-  });
+  const setShouldFetchMore = useSetRecoilComponentFamilyStateV2(
+    recordBoardShouldFetchMoreInColumnComponentFamilyState,
+    columnDefinition.id,
+  );
+
+  const isLoadMoreLocked = useRecoilComponentValueV2(
+    isRecordIndexLoadMoreLockedComponentState,
+  );
+
+  const { ref, inView } = useInView();
+
+  useEffect(() => {
+    if (isLoadMoreLocked) {
+      return;
+    }
+
+    setShouldFetchMore(inView);
+  }, [setShouldFetchMore, inView, isLoadMoreLocked]);
+
+  if (isLoadMoreLocked) {
+    return null;
+  }
 
   return (
     <div ref={ref}>
-      {isFetchingRecords && <StyledText>Loading more...</StyledText>}
+      {isFetchingRecord && <StyledText>Loading more...</StyledText>}
     </div>
   );
 };

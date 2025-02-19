@@ -2,7 +2,6 @@ import { useRecoilState } from 'recoil';
 
 import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { ImageInput } from '@/ui/input/components/ImageInput';
-import { getImageAbsoluteURIOrBase64 } from '@/users/utils/getProfilePictureAbsoluteURI';
 import {
   useUpdateWorkspaceMutation,
   useUploadWorkspaceLogoMutation,
@@ -11,9 +10,9 @@ import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
 export const WorkspaceLogoUploader = () => {
   const [uploadLogo] = useUploadWorkspaceLogoMutation();
-  const [updateWorkspce] = useUpdateWorkspaceMutation();
+  const [updateWorkspace] = useUpdateWorkspaceMutation();
   const [currentWorkspace, setCurrentWorkspace] = useRecoilState(
-    currentWorkspaceState(),
+    currentWorkspaceState,
   );
 
   const onUpload = async (file: File) => {
@@ -40,7 +39,7 @@ export const WorkspaceLogoUploader = () => {
     if (!currentWorkspace?.id) {
       throw new Error('Workspace id not found');
     }
-    await updateWorkspce({
+    await updateWorkspace({
       variables: {
         input: {
           logo: null,
@@ -57,7 +56,7 @@ export const WorkspaceLogoUploader = () => {
 
   return (
     <ImageInput
-      picture={getImageAbsoluteURIOrBase64(currentWorkspace?.logo)}
+      picture={currentWorkspace?.logo}
       onUpload={onUpload}
       onRemove={onRemove}
     />

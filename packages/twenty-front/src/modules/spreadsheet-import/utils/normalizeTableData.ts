@@ -2,13 +2,19 @@ import {
   Columns,
   ColumnType,
 } from '@/spreadsheet-import/steps/components/MatchColumnsStep/MatchColumnsStep';
-import { Data, Fields, RawData } from '@/spreadsheet-import/types';
+import {
+  Fields,
+  ImportedRow,
+  ImportedStructuredRow,
+} from '@/spreadsheet-import/types';
 
+import { isDefined } from 'twenty-shared';
+import { z } from 'zod';
 import { normalizeCheckboxValue } from './normalizeCheckboxValue';
 
 export const normalizeTableData = <T extends string>(
   columns: Columns<T>,
-  data: RawData[],
+  data: ImportedRow[],
   fields: Fields<T>,
 ) =>
   data.map((row) =>
@@ -50,10 +56,45 @@ export const normalizeTableData = <T extends string>(
         }
         case ColumnType.matchedSelect:
         case ColumnType.matchedSelectOptions: {
-          const matchedOption = column.matchedOptions.find(
-            ({ entry }) => entry === curr,
-          );
-          acc[column.value] = matchedOption?.value || undefined;
+          const field = fields.find((field) => field.key === column.value);
+
+          if (!field) {
+            return acc;
+          }
+
+          if (field.fieldType.type === 'multiSelect' && isDefined(curr)) {
+            const currentOptionsSchema = z.preprocess(
+              (value) => JSON.parse(z.string().parse(value)),
+              z.array(z.unknown()),
+            );
+
+            const rawCurrentOptions = currentOptionsSchema.safeParse(curr).data;
+
+            const matchedOptionValues = [
+              ...new Set(
+                rawCurrentOptions
+                  ?.map(
+                    (option) =>
+                      column.matchedOptions.find(
+                        (matchedOption) => matchedOption.entry === option,
+                      )?.value,
+                  )
+                  .filter(isDefined),
+              ),
+            ];
+
+            const fieldValue =
+              matchedOptionValues && matchedOptionValues.length > 0
+                ? JSON.stringify(matchedOptionValues)
+                : undefined;
+
+            acc[column.value] = fieldValue;
+          } else {
+            const matchedOption = column.matchedOptions.find(
+              ({ entry }) => entry === curr,
+            );
+            acc[column.value] = matchedOption?.value || undefined;
+          }
           return acc;
         }
         case ColumnType.empty:
@@ -63,5 +104,5 @@ export const normalizeTableData = <T extends string>(
         default:
           return acc;
       }
-    }, {} as Data<T>),
+    }, {} as ImportedStructuredRow<T>),
   );

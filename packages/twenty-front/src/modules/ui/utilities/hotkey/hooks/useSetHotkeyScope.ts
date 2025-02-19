@@ -1,6 +1,8 @@
 import { useRecoilCallback } from 'recoil';
 
-import { isDefined } from '~/utils/isDefined';
+import { DEBUG_HOTKEY_SCOPE } from '@/ui/utilities/hotkey/hooks/useScopedHotkeyCallback';
+import { isDefined } from 'twenty-shared';
+import { logDebug } from '~/utils/logDebug';
 
 import { DEFAULT_HOTKEYS_SCOPE_CUSTOM_SCOPES } from '../constants/DefaultHotkeysScopeCustomScopes';
 import { currentHotkeyScopeState } from '../states/internal/currentHotkeyScopeState';
@@ -26,7 +28,7 @@ export const useSetHotkeyScope = () =>
     ({ snapshot, set }) =>
       async (hotkeyScopeToSet: string, customScopes?: CustomHotkeyScopes) => {
         const currentHotkeyScope = snapshot
-          .getLoadable(currentHotkeyScopeState())
+          .getLoadable(currentHotkeyScopeState)
           .getValue();
 
         if (currentHotkeyScope.scope === hotkeyScopeToSet) {
@@ -76,8 +78,16 @@ export const useSetHotkeyScope = () =>
         }
 
         scopesToSet.push(newHotkeyScope.scope);
-        set(internalHotkeysEnabledScopesState(), scopesToSet);
-        set(currentHotkeyScopeState(), newHotkeyScope);
+
+        if (DEBUG_HOTKEY_SCOPE) {
+          logDebug('DEBUG: set new hotkey scope', {
+            scopesToSet,
+            newHotkeyScope,
+          });
+        }
+
+        set(internalHotkeysEnabledScopesState, scopesToSet);
+        set(currentHotkeyScopeState, newHotkeyScope);
       },
     [],
   );

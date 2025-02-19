@@ -1,12 +1,17 @@
 import styled from '@emotion/styled';
-import { motion } from 'framer-motion';
+import {
+  AnimatedContainer,
+  FloatingIconButton,
+  IconComponent,
+  MOBILE_VIEWPORT,
+} from 'twenty-ui';
 
-import { IconComponent } from '@/ui/display/icon/types/IconComponent';
-import { FloatingIconButton } from '@/ui/input/button/components/FloatingIconButton';
-
-const StyledEditButtonContainer = styled(motion.div)`
-  position: absolute;
-  right: 5px;
+const StyledButtonContainer = styled.div`
+  margin: ${({ theme }) => theme.spacing(1)};
+  @media (max-width: ${MOBILE_VIEWPORT}px) {
+    position: relative;
+    right: 7px;
+  }
 `;
 
 type RecordTableCellButtonProps = {
@@ -18,12 +23,9 @@ export const RecordTableCellButton = ({
   onClick,
   Icon,
 }: RecordTableCellButtonProps) => (
-  <StyledEditButtonContainer
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    transition={{ duration: 0.1 }}
-    whileHover={{ scale: 1.04 }}
-  >
-    <FloatingIconButton size="small" onClick={onClick} Icon={Icon} />
-  </StyledEditButtonContainer>
+  <AnimatedContainer>
+    <StyledButtonContainer>
+      <FloatingIconButton size="small" onClick={onClick} Icon={Icon} />
+    </StyledButtonContainer>
+  </AnimatedContainer>
 );

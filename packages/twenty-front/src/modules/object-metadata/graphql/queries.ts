@@ -1,11 +1,8 @@
 import { gql } from '@apollo/client';
 
 export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
-  query ObjectMetadataItems(
-    $objectFilter: objectFilter
-    $fieldFilter: fieldFilter
-  ) {
-    objects(paging: { first: 1000 }, filter: $objectFilter) {
+  query ObjectMetadataItems {
+    objects(paging: { first: 1000 }) {
       edges {
         node {
           id
@@ -17,60 +14,79 @@ export const FIND_MANY_OBJECT_METADATA_ITEMS = gql`
           description
           icon
           isCustom
+          isRemote
           isActive
           isSystem
           createdAt
           updatedAt
           labelIdentifierFieldMetadataId
           imageIdentifierFieldMetadataId
-          fields(paging: { first: 1000 }, filter: $fieldFilter) {
+          shortcut
+          isLabelSyncedWithName
+          duplicateCriteria
+          indexMetadatas(paging: { first: 100 }) {
             edges {
               node {
                 id
-                type
-                name
-                label
-                description
-                icon
-                isCustom
-                isActive
-                isSystem
-                isNullable
                 createdAt
                 updatedAt
-                fromRelationMetadata {
-                  id
-                  relationType
-                  toObjectMetadata {
-                    id
-                    dataSourceId
-                    nameSingular
-                    namePlural
-                    isSystem
+                name
+                indexWhereClause
+                indexType
+                isUnique
+                indexFieldMetadatas(paging: { first: 100 }) {
+                  edges {
+                    node {
+                      id
+                      createdAt
+                      updatedAt
+                      order
+                      fieldMetadataId
+                    }
                   }
-                  toFieldMetadataId
                 }
-                toRelationMetadata {
-                  id
-                  relationType
-                  fromObjectMetadata {
-                    id
-                    dataSourceId
-                    nameSingular
-                    namePlural
-                    isSystem
-                  }
-                  fromFieldMetadataId
-                }
-                defaultValue
-                options
               }
             }
-            pageInfo {
-              hasNextPage
-              hasPreviousPage
-              startCursor
-              endCursor
+          }
+          fieldsList {
+            id
+            type
+            name
+            label
+            description
+            icon
+            isCustom
+            isActive
+            isSystem
+            isNullable
+            isUnique
+            createdAt
+            updatedAt
+            defaultValue
+            options
+            settings
+            isLabelSyncedWithName
+            relationDefinition {
+              relationId
+              direction
+              sourceObjectMetadata {
+                id
+                nameSingular
+                namePlural
+              }
+              sourceFieldMetadata {
+                id
+                name
+              }
+              targetObjectMetadata {
+                id
+                nameSingular
+                namePlural
+              }
+              targetFieldMetadata {
+                id
+                name
+              }
             }
           }
         }

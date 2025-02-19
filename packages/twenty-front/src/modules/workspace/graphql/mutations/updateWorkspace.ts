@@ -4,11 +4,15 @@ export const UPDATE_WORKSPACE = gql`
   mutation UpdateWorkspace($input: UpdateWorkspaceInput!) {
     updateWorkspace(data: $input) {
       id
-      domainName
+      customDomain
+      subdomain
       displayName
       logo
       allowImpersonation
-      subscriptionStatus
+      isPublicInviteLinkEnabled
+      isGoogleAuthEnabled
+      isMicrosoftAuthEnabled
+      isPasswordAuthEnabled
     }
   }
 `;

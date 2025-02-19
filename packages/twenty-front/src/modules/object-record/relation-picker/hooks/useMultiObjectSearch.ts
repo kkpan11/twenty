@@ -1,72 +1,66 @@
-import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
-import { useMultiObjectSearchMatchesSearchFilterAndSelectedItemsQuery } from '@/object-record/relation-picker/hooks/useMultiObjectSearchMatchesSearchFilterAndSelectedItemsQuery';
-import { useMultiObjectSearchMatchesSearchFilterAndToSelectQuery } from '@/object-record/relation-picker/hooks/useMultiObjectSearchMatchesSearchFilterAndToSelectQuery';
-import { useMultiObjectSearchSelectedItemsQuery } from '@/object-record/relation-picker/hooks/useMultiObjectSearchSelectedItemsQuery';
-import { ObjectRecord } from '@/object-record/types/ObjectRecord';
-import { ObjectRecordIdentifier } from '@/object-record/types/ObjectRecordIdentifier';
+import { useQuery } from '@apollo/client';
+import { useRecoilValue } from 'recoil';
 
-export const MULTI_OBJECT_SEARCH_REQUEST_LIMIT = 5;
-
-export type ObjectRecordForSelect = {
-  objectMetadataItem: ObjectMetadataItem;
-  record: ObjectRecord;
-  recordIdentifier: ObjectRecordIdentifier;
-};
-
-export type SelectedObjectRecordId = {
-  objectNameSingular: string;
-  id: string;
-};
-
-export type MultiObjectSearch = {
-  selectedObjectRecords: ObjectRecordForSelect[];
-  filteredSelectedObjectRecords: ObjectRecordForSelect[];
-  objectRecordsToSelect: ObjectRecordForSelect[];
-  loading: boolean;
-};
+import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
+import { CoreObjectNameSingular } from '@/object-metadata/types/CoreObjectNameSingular';
+import { EMPTY_QUERY } from '@/object-record/constants/EmptyQuery';
+import { useGenerateCombinedSearchRecordsQuery } from '@/object-record/multiple-objects/hooks/useGenerateCombinedSearchRecordsQuery';
+import { useLimitPerMetadataItem } from '@/object-record/relation-picker/hooks/useLimitPerMetadataItem';
+import { MultiObjectRecordQueryResult } from '@/object-record/relation-picker/hooks/useMultiObjectRecordsQueryResultFormattedAsObjectRecordForSelectArray';
+import { isObjectMetadataItemSearchableInCombinedRequest } from '@/object-record/utils/isObjectMetadataItemSearchableInCombinedRequest';
+import { isDefined } from 'twenty-shared';
 
 export const useMultiObjectSearch = ({
   searchFilterValue,
-  selectedObjectRecordIds,
   limit,
-  excludedObjectRecordIds = [],
+  excludedObjects,
 }: {
   searchFilterValue: string;
-  selectedObjectRecordIds: SelectedObjectRecordId[];
   limit?: number;
-  excludedObjectRecordIds?: SelectedObjectRecordId[];
-}): MultiObjectSearch => {
-  const { selectedObjectRecords, selectedObjectRecordsLoading } =
-    useMultiObjectSearchSelectedItemsQuery({
-      selectedObjectRecordIds,
+  excludedObjects?: CoreObjectNameSingular[];
+}) => {
+  const objectMetadataItems = useRecoilValue(objectMetadataItemsState);
+
+  const selectableObjectMetadataItems = objectMetadataItems
+    .filter(({ isSystem, isRemote }) => !isSystem && !isRemote)
+    .filter(({ nameSingular }) => {
+      return !excludedObjects?.includes(nameSingular as CoreObjectNameSingular);
+    })
+    .filter((objectMetadataItem) =>
+      isObjectMetadataItemSearchableInCombinedRequest(objectMetadataItem),
+    );
+
+  const { limitPerMetadataItem } = useLimitPerMetadataItem({
+    objectMetadataItems,
+    limit,
+  });
+
+  const multiSelectSearchQueryForSelectedIds =
+    useGenerateCombinedSearchRecordsQuery({
+      operationSignatures: selectableObjectMetadataItems.map(
+        (objectMetadataItem) => ({
+          objectNameSingular: objectMetadataItem.nameSingular,
+          variables: {},
+        }),
+      ),
     });
 
   const {
-    selectedAndMatchesSearchFilterObjectRecords,
-    selectedAndMatchesSearchFilterObjectRecordsLoading,
-  } = useMultiObjectSearchMatchesSearchFilterAndSelectedItemsQuery({
-    searchFilterValue,
-    selectedObjectRecordIds,
-    limit,
-  });
-
-  const {
-    toSelectAndMatchesSearchFilterObjectRecords,
-    toSelectAndMatchesSearchFilterObjectRecordsLoading,
-  } = useMultiObjectSearchMatchesSearchFilterAndToSelectQuery({
-    excludedObjectRecordIds,
-    searchFilterValue,
-    selectedObjectRecordIds,
-    limit,
-  });
+    loading: matchesSearchFilterObjectRecordsLoading,
+    data: matchesSearchFilterObjectRecordsQueryResult,
+  } = useQuery<MultiObjectRecordQueryResult>(
+    multiSelectSearchQueryForSelectedIds ?? EMPTY_QUERY,
+    {
+      variables: {
+        search: searchFilterValue,
+        ...limitPerMetadataItem,
+      },
+      skip: !isDefined(multiSelectSearchQueryForSelectedIds),
+    },
+  );
 
   return {
-    selectedObjectRecords,
-    filteredSelectedObjectRecords: selectedAndMatchesSearchFilterObjectRecords,
-    objectRecordsToSelect: toSelectAndMatchesSearchFilterObjectRecords,
-    loading:
-      selectedAndMatchesSearchFilterObjectRecordsLoading ||
-      toSelectAndMatchesSearchFilterObjectRecordsLoading ||
-      selectedObjectRecordsLoading,
+    matchesSearchFilterObjectRecordsLoading,
+    matchesSearchFilterObjectRecordsQueryResult,
   };
 };

@@ -1,35 +1,49 @@
-import { OrderBy } from '@/object-metadata/types/OrderBy';
-import { OrderByField } from '@/object-metadata/types/OrderByField';
-import { Field } from '~/generated/graphql';
+import { ObjectMetadataItem } from '@/object-metadata/types/ObjectMetadataItem';
+
+import { hasPositionField } from '@/object-metadata/utils/hasPositionField';
+import { RecordGqlOperationOrderBy } from '@/object-record/graphql/types/RecordGqlOperationOrderBy';
+import { isDefined } from 'twenty-shared';
 import { mapArrayToObject } from '~/utils/array/mapArrayToObject';
 import { isUndefinedOrNull } from '~/utils/isUndefinedOrNull';
 
+import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
+import { getOrderByForFieldMetadataType } from '@/object-metadata/utils/getOrderByForFieldMetadataType';
+import { OrderBy } from '@/types/OrderBy';
 import { Sort } from '../types/Sort';
 
 export const turnSortsIntoOrderBy = (
+  objectMetadataItem: ObjectMetadataItem,
   sorts: Sort[],
-  fields: Pick<Field, 'id' | 'name'>[],
-): OrderByField => {
+): RecordGqlOperationOrderBy => {
+  const fields: Pick<FieldMetadataItem, 'id' | 'name' | 'type'>[] =
+    objectMetadataItem?.fields ?? [];
+
   const fieldsById = mapArrayToObject(fields, ({ id }) => id);
-  const sortsOrderBy = Object.fromEntries(
-    sorts.map((sort) => {
+
+  const sortsOrderBy = sorts
+    .map((sort) => {
       const correspondingField = fieldsById[sort.fieldMetadataId];
 
       if (isUndefinedOrNull(correspondingField)) {
-        throw new Error(
-          `Could not find field ${sort.fieldMetadataId} in metadata object`,
-        );
+        return undefined;
       }
 
       const direction: OrderBy =
         sort.direction === 'asc' ? 'AscNullsFirst' : 'DescNullsLast';
 
-      return [correspondingField.name, direction];
-    }),
-  );
+      return getOrderByForFieldMetadataType(correspondingField, direction);
+    })
+    .filter(isDefined);
 
-  return {
-    ...sortsOrderBy,
-    position: 'AscNullsFirst',
-  };
+  if (hasPositionField(objectMetadataItem)) {
+    const positionOrderBy = [
+      {
+        position: 'AscNullsFirst',
+      },
+    ] satisfies RecordGqlOperationOrderBy;
+
+    return [...sortsOrderBy, ...positionOrderBy].flat();
+  }
+
+  return sortsOrderBy.flat();
 };

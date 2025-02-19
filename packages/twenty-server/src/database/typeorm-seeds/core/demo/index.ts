@@ -12,7 +12,7 @@ import { deleteFeatureFlags } from 'src/database/typeorm-seeds/core/demo/feature
 import {
   deleteUserWorkspaces,
   seedUserWorkspaces,
-} from 'src/database/typeorm-seeds/core/demo/userWorkspaces';
+} from 'src/database/typeorm-seeds/core/demo/user-workspaces';
 
 export const seedCoreSchema = async (
   workspaceDataSource: DataSource,
@@ -21,7 +21,7 @@ export const seedCoreSchema = async (
   const schemaName = 'core';
 
   await seedWorkspaces(workspaceDataSource, schemaName, workspaceId);
-  await seedUsers(workspaceDataSource, schemaName, workspaceId);
+  await seedUsers(workspaceDataSource, schemaName);
   await seedUserWorkspaces(workspaceDataSource, schemaName, workspaceId);
 };
 

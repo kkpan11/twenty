@@ -1,23 +1,19 @@
 import { Meta, StoryObj } from '@storybook/react';
 import { within } from '@storybook/test';
 
-import { ComponentWithRouterDecorator } from '~/testing/decorators/ComponentWithRouterDecorator';
-import { PageDecoratorArgs } from '~/testing/decorators/PageDecorator';
-import { RelationPickerDecorator } from '~/testing/decorators/RelationPickerDecorator';
-import { SnackBarDecorator } from '~/testing/decorators/SnackBarDecorator';
+import {
+  PageDecorator,
+  PageDecoratorArgs,
+} from '~/testing/decorators/PageDecorator';
 import { graphqlMocks } from '~/testing/graphqlMocks';
 
 import { NotFound } from '../NotFound';
 const meta: Meta<PageDecoratorArgs> = {
   title: 'Pages/NotFound/Default',
   component: NotFound,
-  decorators: [
-    ComponentWithRouterDecorator,
-    SnackBarDecorator,
-    RelationPickerDecorator,
-  ],
+  decorators: [PageDecorator],
   args: {
-    routePath: 'toto-not-found',
+    routePath: '/toto-not-found',
   },
   parameters: {
     msw: graphqlMocks,

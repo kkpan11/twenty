@@ -2,7 +2,7 @@ import { Options, useHotkeys } from 'react-hotkeys-hook';
 import { Keys } from 'react-hotkeys-hook/dist/types';
 import { useRecoilState } from 'recoil';
 
-import { isDefined } from '~/utils/isDefined';
+import { isDefined } from 'twenty-shared';
 
 import { pendingHotkeyState } from '../states/internal/pendingHotkeysState';
 
@@ -20,8 +20,7 @@ export const useSequenceHotkeys = (
   },
   deps: any[] = [],
 ) => {
-  const [pendingHotkey, setPendingHotkey] =
-    useRecoilState(pendingHotkeyState());
+  const [pendingHotkey, setPendingHotkey] = useRecoilState(pendingHotkeyState);
 
   const callScopedHotkeyCallback = useScopedHotkeyCallback();
 

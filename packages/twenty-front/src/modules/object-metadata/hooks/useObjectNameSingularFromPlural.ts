@@ -1,18 +1,16 @@
 import { useRecoilValue } from 'recoil';
 
-import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState.ts';
+import { currentWorkspaceState } from '@/auth/states/currentWorkspaceState';
 import { objectMetadataItemFamilySelector } from '@/object-metadata/states/objectMetadataItemFamilySelector';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
-import { isDefined } from '~/utils/isDefined';
+import { isDefined, isWorkspaceActiveOrSuspended } from 'twenty-shared';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 
 export const useObjectNameSingularFromPlural = ({
   objectNamePlural,
 }: {
   objectNamePlural: string;
 }) => {
-  const currentWorkspace = useRecoilValue(currentWorkspaceState());
-
-  const mockObjectMetadataItems = getObjectMetadataItemsMock();
+  const currentWorkspace = useRecoilValue(currentWorkspaceState);
 
   let objectMetadataItem = useRecoilValue(
     objectMetadataItemFamilySelector({
@@ -21,9 +19,9 @@ export const useObjectNameSingularFromPlural = ({
     }),
   );
 
-  if (currentWorkspace?.activationStatus !== 'active') {
+  if (!isWorkspaceActiveOrSuspended(currentWorkspace)) {
     objectMetadataItem =
-      mockObjectMetadataItems.find(
+      generatedMockObjectMetadataItems.find(
         (objectMetadataItem) =>
           objectMetadataItem.namePlural === objectNamePlural,
       ) ?? null;

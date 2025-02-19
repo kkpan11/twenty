@@ -1,78 +1,125 @@
-import { isNonEmptyString } from '@sniptt/guards';
-
 import { FieldMetadataItem } from '@/object-metadata/types/FieldMetadataItem';
-import { FieldMetadataType } from '~/generated/graphql';
-import { capitalize } from '~/utils/string/capitalize';
+import { FieldActorValue } from '@/object-record/record-field/types/FieldMetadata';
+import { assertUnreachable } from '@/workflow/utils/assertUnreachable';
+import {
+  FieldMetadataType,
+  RelationDefinitionType,
+} from '~/generated-metadata/graphql';
 
-export const generateEmptyFieldValue = (
-  fieldMetadataItem: FieldMetadataItem,
-) => {
+export type GenerateEmptyFieldValueArgs = {
+  fieldMetadataItem: Pick<FieldMetadataItem, 'type' | 'relationDefinition'>;
+};
+// TODO strictly type each fieldValue following their FieldMetadataType
+export const generateEmptyFieldValue = ({
+  fieldMetadataItem,
+}: GenerateEmptyFieldValueArgs) => {
   switch (fieldMetadataItem.type) {
-    case FieldMetadataType.Email:
-    case FieldMetadataType.Phone:
-    case FieldMetadataType.Text: {
+    case FieldMetadataType.TEXT: {
       return '';
     }
-    case FieldMetadataType.Link: {
-      return {
-        label: '',
-        url: '',
-      };
+    case FieldMetadataType.EMAILS: {
+      return { primaryEmail: '', additionalEmails: null };
     }
-    case FieldMetadataType.FullName: {
+    case FieldMetadataType.LINKS: {
+      return { primaryLinkUrl: '', primaryLinkLabel: '', secondaryLinks: [] };
+    }
+    case FieldMetadataType.FULL_NAME: {
       return {
         firstName: '',
         lastName: '',
       };
     }
-    case FieldMetadataType.DateTime: {
+    case FieldMetadataType.ADDRESS: {
+      return {
+        addressStreet1: '',
+        addressStreet2: '',
+        addressCity: '',
+        addressState: '',
+        addressCountry: '',
+        addressPostcode: '',
+        addressLat: null,
+        addressLng: null,
+      };
+    }
+    case FieldMetadataType.DATE_TIME: {
       return null;
     }
-    case FieldMetadataType.Number:
-    case FieldMetadataType.Rating:
-    case FieldMetadataType.Position:
-    case FieldMetadataType.Numeric: {
+    case FieldMetadataType.DATE: {
       return null;
     }
-    case FieldMetadataType.Uuid: {
+    case FieldMetadataType.NUMBER:
+    case FieldMetadataType.RATING:
+    case FieldMetadataType.POSITION:
+    case FieldMetadataType.NUMERIC: {
       return null;
     }
-    case FieldMetadataType.Boolean: {
+    case FieldMetadataType.UUID: {
+      return null;
+    }
+    case FieldMetadataType.BOOLEAN: {
       return true;
     }
-    case FieldMetadataType.Relation: {
-      // TODO: refactor with relationDefiniton once the PR is merged : https://github.com/twentyhq/twenty/pull/4378
-      // so we can directly check the relation type from this field point of view.
+    case FieldMetadataType.RELATION: {
       if (
-        !isNonEmptyString(
-          fieldMetadataItem.fromRelationMetadata?.toObjectMetadata
-            ?.nameSingular,
-        )
+        fieldMetadataItem.relationDefinition?.direction ===
+        RelationDefinitionType.MANY_TO_ONE
       ) {
         return null;
       }
 
-      return {
-        __typename: `${capitalize(
-          fieldMetadataItem.fromRelationMetadata.toObjectMetadata.nameSingular,
-        )}Connection`,
-        edges: [],
-      };
+      return [];
     }
-    case FieldMetadataType.Currency: {
+    case FieldMetadataType.CURRENCY: {
       return {
         amountMicros: null,
         currencyCode: null,
       };
     }
-    case FieldMetadataType.Select: {
+    case FieldMetadataType.SELECT: {
       return null;
     }
-    case FieldMetadataType.MultiSelect: {
-      throw new Error('Not implemented yet');
+    case FieldMetadataType.MULTI_SELECT: {
+      return null;
+    }
+    case FieldMetadataType.ARRAY: {
+      return null;
+    }
+    case FieldMetadataType.RAW_JSON: {
+      return null;
+    }
+    case FieldMetadataType.RICH_TEXT: {
+      return null;
+    }
+    case FieldMetadataType.RICH_TEXT_V2: {
+      return {
+        blocknote: null,
+        markdown: null,
+      };
+    }
+    case FieldMetadataType.ACTOR: {
+      return {
+        source: 'MANUAL',
+        context: {},
+        name: '',
+        workspaceMemberId: null,
+      } satisfies FieldActorValue;
+    }
+    case FieldMetadataType.PHONES: {
+      return {
+        primaryPhoneNumber: '',
+        primaryPhoneCountryCode: '',
+        primaryPhoneCallingCode: '',
+        additionalPhones: null,
+      };
+    }
+    case FieldMetadataType.TS_VECTOR: {
+      throw new Error('TS_VECTOR not implemented yet');
     }
     default: {
-      throw new Error('Unhandled FieldMetadataType');
+      return assertUnreachable(
+        fieldMetadataItem.type,
+        'Unhandled FieldMetadataType',
+      );
     }
   }
 };

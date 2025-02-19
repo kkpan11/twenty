@@ -1,5 +1,11 @@
-import { ThemeColor } from '@/ui/theme/constants/MainColorNames';
-import { Field, Relation } from '~/generated-metadata/graphql';
+import { ThemeColor } from 'twenty-ui';
+
+import {
+  Field,
+  Object as MetadataObject,
+  RelationDefinition,
+  RelationDefinitionType,
+} from '~/generated-metadata/graphql';
 
 export type FieldMetadataItemOption = {
   color: ThemeColor;
@@ -11,29 +17,27 @@ export type FieldMetadataItemOption = {
 
 export type FieldMetadataItem = Omit<
   Field,
-  | '__typename'
-  | 'fromRelationMetadata'
-  | 'toRelationMetadata'
-  | 'defaultValue'
-  | 'options'
+  '__typename' | 'defaultValue' | 'options' | 'relationDefinition'
 > & {
   __typename?: string;
-  fromRelationMetadata?:
-    | (Pick<Relation, 'id' | 'toFieldMetadataId' | 'relationType'> & {
-        toObjectMetadata: Pick<
-          Relation['toObjectMetadata'],
-          'id' | 'nameSingular' | 'namePlural' | 'isSystem'
-        >;
-      })
-    | null;
-  toRelationMetadata?:
-    | (Pick<Relation, 'id' | 'fromFieldMetadataId' | 'relationType'> & {
-        fromObjectMetadata: Pick<
-          Relation['fromObjectMetadata'],
-          'id' | 'nameSingular' | 'namePlural' | 'isSystem'
-        >;
-      })
-    | null;
   defaultValue?: any;
-  options?: FieldMetadataItemOption[];
+  options?: FieldMetadataItemOption[] | null;
+  relationDefinition?: {
+    relationId: RelationDefinition['relationId'];
+    direction: RelationDefinitionType;
+    sourceFieldMetadata: Pick<Field, 'id' | 'name'>;
+    sourceObjectMetadata: Pick<
+      MetadataObject,
+      'id' | 'nameSingular' | 'namePlural'
+    >;
+    targetFieldMetadata: Pick<Field, 'id' | 'name'>;
+    targetObjectMetadata: Pick<
+      MetadataObject,
+      'id' | 'nameSingular' | 'namePlural'
+    >;
+  } | null;
+  settings?: {
+    displayAsRelativeDate?: boolean;
+  };
+  isLabelSyncedWithName?: boolean | null;
 };

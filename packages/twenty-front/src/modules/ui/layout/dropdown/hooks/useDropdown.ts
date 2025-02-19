@@ -1,48 +1,89 @@
-import { useRecoilState } from 'recoil';
+import { useRecoilCallback, useRecoilState } from 'recoil';
 
 import { useDropdownStates } from '@/ui/layout/dropdown/hooks/internal/useDropdownStates';
+import { useGoBackToPreviousDropdownFocusId } from '@/ui/layout/dropdown/hooks/useGoBackToPreviousDropdownFocusId';
+import { useSetActiveDropdownFocusIdAndMemorizePrevious } from '@/ui/layout/dropdown/hooks/useSetFocusedDropdownIdAndMemorizePrevious';
+import { dropdownHotkeyComponentState } from '@/ui/layout/dropdown/states/dropdownHotkeyComponentState';
 import { usePreviousHotkeyScope } from '@/ui/utilities/hotkey/hooks/usePreviousHotkeyScope';
 import { getScopeIdOrUndefinedFromComponentId } from '@/ui/utilities/recoil-scope/utils/getScopeIdOrUndefinedFromComponentId';
-import { isDefined } from '~/utils/isDefined';
+import { getSnapshotValue } from '@/ui/utilities/recoil-scope/utils/getSnapshotValue';
+import { useCallback } from 'react';
+import { isDefined } from 'twenty-shared';
 
 export const useDropdown = (dropdownId?: string) => {
   const {
     scopeId,
-    dropdownHotkeyScopeState,
     dropdownWidthState,
     isDropdownOpenState,
+    dropdownPlacementState,
   } = useDropdownStates({
     dropdownScopeId: getScopeIdOrUndefinedFromComponentId(dropdownId),
   });
+
+  const { setActiveDropdownFocusIdAndMemorizePrevious } =
+    useSetActiveDropdownFocusIdAndMemorizePrevious();
+
+  const { goBackToPreviousDropdownFocusId } =
+    useGoBackToPreviousDropdownFocusId();
 
   const {
     setHotkeyScopeAndMemorizePreviousScope,
     goBackToPreviousHotkeyScope,
   } = usePreviousHotkeyScope();
 
-  const [dropdownHotkeyScope] = useRecoilState(dropdownHotkeyScopeState());
+  const [dropdownWidth, setDropdownWidth] = useRecoilState(dropdownWidthState);
 
-  const [dropdownWidth, setDropdownWidth] =
-    useRecoilState(dropdownWidthState());
-
-  const [isDropdownOpen, setIsDropdownOpen] = useRecoilState(
-    isDropdownOpenState(),
+  const [dropdownPlacement, setDropdownPlacement] = useRecoilState(
+    dropdownPlacementState,
   );
 
-  const closeDropdown = () => {
-    goBackToPreviousHotkeyScope();
-    setIsDropdownOpen(false);
-  };
+  const [isDropdownOpen, setIsDropdownOpen] =
+    useRecoilState(isDropdownOpenState);
 
-  const openDropdown = () => {
-    setIsDropdownOpen(true);
-    if (isDefined(dropdownHotkeyScope)) {
-      setHotkeyScopeAndMemorizePreviousScope(
-        dropdownHotkeyScope.scope,
-        dropdownHotkeyScope.customScopes,
-      );
+  const closeDropdown = useCallback(() => {
+    if (isDropdownOpen) {
+      goBackToPreviousHotkeyScope();
+      setIsDropdownOpen(false);
+      goBackToPreviousDropdownFocusId();
     }
-  };
+  }, [
+    isDropdownOpen,
+    goBackToPreviousHotkeyScope,
+    setIsDropdownOpen,
+    goBackToPreviousDropdownFocusId,
+  ]);
+
+  const openDropdown = useRecoilCallback(
+    ({ snapshot }) =>
+      () => {
+        if (!isDropdownOpen) {
+          setIsDropdownOpen(true);
+          setActiveDropdownFocusIdAndMemorizePrevious(dropdownId ?? scopeId);
+
+          const dropdownHotkeyScope = getSnapshotValue(
+            snapshot,
+            dropdownHotkeyComponentState({
+              scopeId: dropdownId ?? scopeId,
+            }),
+          );
+
+          if (isDefined(dropdownHotkeyScope)) {
+            setHotkeyScopeAndMemorizePreviousScope(
+              dropdownHotkeyScope.scope,
+              dropdownHotkeyScope.customScopes,
+            );
+          }
+        }
+      },
+    [
+      dropdownId,
+      isDropdownOpen,
+      scopeId,
+      setHotkeyScopeAndMemorizePreviousScope,
+      setActiveDropdownFocusIdAndMemorizePrevious,
+      setIsDropdownOpen,
+    ],
+  );
 
   const toggleDropdown = () => {
     if (isDropdownOpen) {
@@ -54,11 +95,13 @@ export const useDropdown = (dropdownId?: string) => {
 
   return {
     scopeId,
-    isDropdownOpen: isDropdownOpen,
+    isDropdownOpen,
     closeDropdown,
     toggleDropdown,
     openDropdown,
     dropdownWidth,
     setDropdownWidth,
+    dropdownPlacement,
+    setDropdownPlacement,
   };
 };

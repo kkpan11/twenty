@@ -1,202 +1,140 @@
+import { gql, InMemoryCache } from '@apollo/client';
+import { MockedProvider } from '@apollo/client/testing';
+import { act, renderHook } from '@testing-library/react';
 import { ReactNode } from 'react';
-import { MockedProvider, MockedResponse } from '@apollo/client/testing';
-import { act, renderHook, waitFor } from '@testing-library/react';
-import gql from 'graphql-tag';
 import { RecoilRoot, useSetRecoilState } from 'recoil';
 
 import { useActivityTargetObjectRecords } from '@/activities/hooks/useActivityTargetObjectRecords';
 import { currentWorkspaceMemberState } from '@/auth/states/currentWorkspaceMemberState';
 import { objectMetadataItemsState } from '@/object-metadata/states/objectMetadataItemsState';
-import { getObjectMetadataItemsMock } from '@/object-metadata/utils/getObjectMetadataItemsMock';
 import { SnackBarProviderScope } from '@/ui/feedback/snack-bar-manager/scopes/SnackBarProviderScope';
-import { mockedActivities } from '~/testing/mock-data/activities';
-import { mockedCompaniesData } from '~/testing/mock-data/companies';
-import { mockedPeopleData } from '~/testing/mock-data/people';
+import { JestObjectMetadataItemSetter } from '~/testing/jest/JestObjectMetadataItemSetter';
+import { generatedMockObjectMetadataItems } from '~/testing/mock-data/generatedMockObjectMetadataItems';
 import { mockWorkspaceMembers } from '~/testing/mock-data/workspace-members';
 
-const defaultResponseData = {
-  pageInfo: {
-    hasNextPage: false,
-    startCursor: '',
-    endCursor: '',
-  },
-  totalCount: 1,
-};
+const cache = new InMemoryCache();
 
-const mockActivityTarget = {
-  __typename: 'ActivityTarget',
-  updatedAt: '2021-08-03T19:20:06.000Z',
-  createdAt: '2021-08-03T19:20:06.000Z',
-  personId: '1',
-  activityId: '234',
-  companyId: '1',
-  id: '123',
-  person: { ...mockedPeopleData[0], __typename: 'Person', updatedAt: '' },
-  company: { ...mockedCompaniesData[0], __typename: 'Company', updatedAt: '' },
-  activity: mockedActivities[0],
-};
-
-const mocks: MockedResponse[] = [
-  {
-    request: {
-      query: gql`
-        query FindManyActivityTargets(
-          $filter: ActivityTargetFilterInput
-          $orderBy: ActivityTargetOrderByInput
-          $lastCursor: String
-          $limit: Float
-        ) {
-          activityTargets(
-            filter: $filter
-            orderBy: $orderBy
-            first: $limit
-            after: $lastCursor
-          ) {
-            edges {
-              node {
-                __typename
-                updatedAt
-                createdAt
-                company {
-                  __typename
-                  xLink {
-                    label
-                    url
-                  }
-                  linkedinLink {
-                    label
-                    url
-                  }
-                  domainName
-                  annualRecurringRevenue {
-                    amountMicros
-                    currencyCode
-                  }
-                  createdAt
-                  address
-                  updatedAt
-                  name
-                  accountOwnerId
-                  employees
-                  id
-                  idealCustomerProfile
-                }
-                personId
-                activityId
-                companyId
-                id
-                activity {
-                  __typename
-                  createdAt
-                  reminderAt
-                  authorId
-                  title
-                  completedAt
-                  updatedAt
-                  body
-                  dueAt
-                  type
-                  id
-                  assigneeId
-                }
-                person {
-                  __typename
-                  xLink {
-                    label
-                    url
-                  }
-                  id
-                  createdAt
-                  city
-                  email
-                  jobTitle
-                  name {
-                    firstName
-                    lastName
-                  }
-                  phone
-                  linkedinLink {
-                    label
-                    url
-                  }
-                  updatedAt
-                  avatarUrl
-                  companyId
-                }
-              }
-              cursor
-            }
-            pageInfo {
-              hasNextPage
-              startCursor
-              endCursor
-            }
-            totalCount
-          }
-        }
-      `,
-      variables: {
-        filter: { activityId: { eq: '1234' } },
-        limit: undefined,
-        orderBy: undefined,
-      },
+const taskTarget = {
+  id: '89bb825c-171e-4bcc-9cf7-43448d6fb300',
+  createdAt: '2023-04-26T10:12:42.33625+00:00',
+  updatedAt: '2023-04-26T10:23:42.33625+00:00',
+  companyId: null,
+  company: null,
+  personId: '89bb825c-171e-4bcc-9cf7-43448d6fb280',
+  person: {
+    id: '89bb825c-171e-4bcc-9cf7-43448d6fb280',
+    createdAt: '2023-04-26T10:12:42.33625+00:00',
+    updatedAt: '2023-04-26T10:23:42.33625+00:00',
+    city: 'City',
+    name: {
+      firstName: 'John',
+      lastName: 'Doe',
     },
-    result: jest.fn(() => ({
-      data: {
-        activityTargets: {
-          ...defaultResponseData,
-          edges: [
-            {
-              node: mockActivityTarget,
-              cursor: '1',
-            },
-          ],
-        },
-      },
-    })),
+    __typename: 'Person',
   },
-];
+  taskId: '89bb825c-171e-4bcc-9cf7-43448d6fb230',
+  task: {
+    id: '89bb825c-171e-4bcc-9cf7-43448d6fb230',
+    createdAt: '2023-04-26T10:12:42.33625+00:00',
+    updatedAt: '2023-04-26T10:23:42.33625+00:00',
+    dueAt: null,
+    body: '{}',
+    title: 'Task title',
+    assigneeId: null,
+    __typename: 'Task',
+  },
+  __typename: 'TaskTarget',
+};
 
-const mockObjectMetadataItems = getObjectMetadataItemsMock();
+cache.writeFragment({
+  fragment: gql`
+    fragment TaskTargetFragment on TaskTarget {
+      __typename
+      updatedAt
+      createdAt
+      personId
+      taskId
+      companyId
+      id
+      task {
+        __typename
+        createdAt
+        title
+        updatedAt
+        body
+        dueAt
+        id
+        assigneeId
+      }
+      person {
+        __typename
+        id
+        createdAt
+        updatedAt
+        city
+        name {
+          firstName
+          lastName
+        }
+      }
+      company {
+        __typename
+        id
+        createdAt
+        updatedAt
+      }
+    }
+  `,
+  id: `TaskTarget:${taskTarget.id}`,
+  data: taskTarget,
+});
+
+const task = {
+  id: '89bb825c-171e-4bcc-9cf7-43448d6fb230',
+  createdAt: '2023-04-26T10:12:42.33625+00:00',
+  updatedAt: '2023-04-26T10:23:42.33625+00:00',
+  title: 'Task title',
+  body: '',
+  bodyV2: {
+    blocknote: null,
+    markdown: null,
+  },
+  assigneeId: null,
+  status: null,
+  dueAt: '2023-04-26T10:12:42.33625+00:00',
+  assignee: null,
+  __typename: 'Task' as any,
+  taskTargets: [taskTarget],
+};
 
 const Wrapper = ({ children }: { children: ReactNode }) => (
   <RecoilRoot>
-    <MockedProvider mocks={mocks} addTypename={false}>
-      <SnackBarProviderScope snackBarManagerScopeId="snack-bar-manager">
-        {children}
-      </SnackBarProviderScope>
+    <MockedProvider cache={cache}>
+      <JestObjectMetadataItemSetter>
+        <SnackBarProviderScope snackBarManagerScopeId="snack-bar-manager">
+          {children}
+        </SnackBarProviderScope>
+      </JestObjectMetadataItemSetter>
     </MockedProvider>
   </RecoilRoot>
 );
 
 describe('useActivityTargetObjectRecords', () => {
-  it('returns default response', () => {
-    const { result } = renderHook(
-      () => useActivityTargetObjectRecords({ activityId: '1234' }),
-      { wrapper: Wrapper },
-    );
-
-    expect(result.current).toEqual({
-      activityTargetObjectRecords: [],
-      loadingActivityTargets: false,
-    });
-  });
-
-  it('fetches records', async () => {
+  it('return targetObjects', async () => {
     const { result } = renderHook(
       () => {
         const setCurrentWorkspaceMember = useSetRecoilState(
-          currentWorkspaceMemberState(),
+          currentWorkspaceMemberState,
         );
         const setObjectMetadataItems = useSetRecoilState(
-          objectMetadataItemsState(),
+          objectMetadataItemsState,
         );
 
-        const { activityTargetObjectRecords, loadingActivityTargets } =
-          useActivityTargetObjectRecords({ activityId: '1234' });
+        const { activityTargetObjectRecords } =
+          useActivityTargetObjectRecords(task);
+
         return {
           activityTargetObjectRecords,
-          loadingActivityTargets,
           setCurrentWorkspaceMember,
           setObjectMetadataItems,
         };
@@ -206,18 +144,19 @@ describe('useActivityTargetObjectRecords', () => {
 
     act(() => {
       result.current.setCurrentWorkspaceMember(mockWorkspaceMembers[0]);
-      result.current.setObjectMetadataItems(mockObjectMetadataItems);
+      result.current.setObjectMetadataItems(generatedMockObjectMetadataItems);
     });
 
-    expect(result.current.loadingActivityTargets).toBe(true);
+    const activityTargetObjectRecords =
+      result.current.activityTargetObjectRecords;
 
-    // Wait for activityTargets to complete fetching
-    await waitFor(() => !result.current.loadingActivityTargets);
-
-    expect(mocks[0].result).toHaveBeenCalled();
-    expect(result.current.activityTargetObjectRecords).toHaveLength(1);
+    expect(activityTargetObjectRecords).toHaveLength(1);
+    expect(activityTargetObjectRecords[0].activityTarget).toEqual(taskTarget);
+    expect(activityTargetObjectRecords[0].targetObject).toEqual(
+      taskTarget.person,
+    );
     expect(
-      result.current.activityTargetObjectRecords[0].targetObjectNameSingular,
-    ).toBe('person');
+      activityTargetObjectRecords[0].targetObjectMetadataItem.nameSingular,
+    ).toEqual('person');
   });
 });

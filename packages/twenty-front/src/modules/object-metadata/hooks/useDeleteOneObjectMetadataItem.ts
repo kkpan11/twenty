@@ -1,5 +1,4 @@
-import { ApolloClient, useMutation } from '@apollo/client';
-import { getOperationName } from '@apollo/client/utilities';
+import { useMutation } from '@apollo/client';
 
 import {
   DeleteOneObjectMetadataItemMutation,
@@ -7,8 +6,8 @@ import {
 } from '~/generated-metadata/graphql';
 
 import { DELETE_ONE_OBJECT_METADATA_ITEM } from '../graphql/mutations';
-import { FIND_MANY_OBJECT_METADATA_ITEMS } from '../graphql/queries';
 
+import { useRefreshObjectMetadataItems } from '@/object-metadata/hooks/useRefreshObjectMetadataItem';
 import { useApolloMetadataClient } from './useApolloMetadataClient';
 
 export const useDeleteOneObjectMetadataItem = () => {
@@ -18,19 +17,24 @@ export const useDeleteOneObjectMetadataItem = () => {
     DeleteOneObjectMetadataItemMutation,
     DeleteOneObjectMetadataItemMutationVariables
   >(DELETE_ONE_OBJECT_METADATA_ITEM, {
-    client: apolloMetadataClient ?? ({} as ApolloClient<any>),
+    client: apolloMetadataClient,
   });
+
+  const { refreshObjectMetadataItems } =
+    useRefreshObjectMetadataItems('network-only');
 
   const deleteOneObjectMetadataItem = async (
     idToDelete: DeleteOneObjectMetadataItemMutationVariables['idToDelete'],
   ) => {
-    return await mutate({
+    const result = await mutate({
       variables: {
         idToDelete,
       },
-      awaitRefetchQueries: true,
-      refetchQueries: [getOperationName(FIND_MANY_OBJECT_METADATA_ITEMS) ?? ''],
     });
+
+    await refreshObjectMetadataItems();
+
+    return result;
   };
 
   return {

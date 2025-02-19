@@ -12,9 +12,13 @@ const computeStoriesGlob = () => {
 
   if (process.env.STORYBOOK_SCOPE === 'modules') {
     return [
-      '../src/modules/**/*.stories.@(js|jsx|ts|tsx)',
+      '../src/modules/**/!(perf)/*.stories.@(js|jsx|ts|tsx)',
       '../src/modules/**/*.docs.mdx',
     ];
+  }
+
+  if (process.env.STORYBOOK_SCOPE === 'performance') {
+    return ['../src/modules/**/perf/*.perf.stories.@(js|jsx|ts|tsx)'];
   }
 
   if (process.env.STORYBOOK_SCOPE === 'ui-docs') {
@@ -27,13 +31,21 @@ const computeStoriesGlob = () => {
 const config: StorybookConfig = {
   stories: computeStoriesGlob(),
   staticDirs: ['../public'],
+  build: {
+    test: {
+      disabledAddons: [
+        '@storybook/addon-docs',
+        '@storybook/addon-essentials/docs',
+      ],
+    }
+  },
   addons: [
     '@storybook/addon-links',
     '@storybook/addon-essentials',
     '@storybook/addon-onboarding',
     '@storybook/addon-interactions',
     '@storybook/addon-coverage',
-    '@storybook/addon-themes',
+    'storybook-dark-mode',
     'storybook-addon-cookie',
     'storybook-addon-pseudo-states',
   ],
@@ -41,8 +53,18 @@ const config: StorybookConfig = {
     name: '@storybook/react-vite',
     options: {},
   },
-  docs: {
-    autodocs: false,
+  viteFinal: async (config) => {
+    // Merge custom configuration into the default config
+    const { mergeConfig } = await import('vite');
+
+    return mergeConfig(config, {
+      resolve: {
+        alias: {
+          'react-dom/client': 'react-dom/profiling',
+        },
+      },
+    });
   },
+  logLevel: 'error',
 };
 export default config;

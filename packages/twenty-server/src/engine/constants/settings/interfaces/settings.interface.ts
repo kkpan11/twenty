@@ -1,4 +1,4 @@
-import { FileFolder } from 'src/engine/modules/file/interfaces/file-folder.interface';
+import { FileFolder } from 'src/engine/core-modules/file/interfaces/file-folder.interface';
 
 import { ShortCropSize } from 'src/utils/image';
 
@@ -12,4 +12,5 @@ export interface Settings {
     maxFileSize: `${number}MB`;
   };
   minLengthOfStringForDuplicateCheck: number;
+  maxVisibleViewFields: number;
 }

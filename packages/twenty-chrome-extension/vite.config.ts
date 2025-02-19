@@ -19,12 +19,16 @@ const viteManifestHack: Plugin & {
 
 export default defineConfig(() => {
   return {
+    root: __dirname,
+    cacheDir: '../../node_modules/.vite/packages/twenty-chrome-extension',
+
     build: {
       emptyOutDir: true,
       outDir: 'dist',
       rollupOptions: {
         output: { chunkFileNames: 'assets/chunk-[hash].js' },
       },
+      target: 'ES2022',
     },
 
     // Adding this to fix websocket connection error.
